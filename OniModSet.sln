@@ -1,0 +1,44 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32901.215
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PowerlessDeodorizers", "PowerlessDeodorizers\PowerlessDeodorizers.csproj", "{138BF20E-AEE8-4C1C-BA90-D63BDA1C7B8B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GroupResources", "GroupResources\GroupResources.csproj", "{C00CFDA3-8904-4731-9D3E-5ACB28890825}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RocketControlledCheckpoint", "RocketControlledCheckpoint\RocketControlledCheckpoint.csproj", "{4B203293-E4DE-4B3B-8418-1B120784BBD6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F9AB59A0-60F3-41A0-8593-711371FE3B8A}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
+		Directory.Build.props.default = Directory.Build.props.default
+		Directory.Build.targets = Directory.Build.targets
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{138BF20E-AEE8-4C1C-BA90-D63BDA1C7B8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{138BF20E-AEE8-4C1C-BA90-D63BDA1C7B8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{138BF20E-AEE8-4C1C-BA90-D63BDA1C7B8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{138BF20E-AEE8-4C1C-BA90-D63BDA1C7B8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C00CFDA3-8904-4731-9D3E-5ACB28890825}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C00CFDA3-8904-4731-9D3E-5ACB28890825}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C00CFDA3-8904-4731-9D3E-5ACB28890825}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C00CFDA3-8904-4731-9D3E-5ACB28890825}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B203293-E4DE-4B3B-8418-1B120784BBD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B203293-E4DE-4B3B-8418-1B120784BBD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B203293-E4DE-4B3B-8418-1B120784BBD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B203293-E4DE-4B3B-8418-1B120784BBD6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4AF98F4B-2D1D-4E54-88AC-CCA4540A497A}
+	EndGlobalSection
+EndGlobal
