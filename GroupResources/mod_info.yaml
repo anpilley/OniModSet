@@ -1,6 +1,0 @@
-supportedContent: ALL
-minimumSupportedBuild: 441000
-APIVersion: 2
-version: "0.0.1"
-title: Grouped Pinned Resources
-description: Groups Pinned Resources by category (Alloys, Manufactured Materials, etc).
