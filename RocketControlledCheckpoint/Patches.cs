@@ -177,7 +177,7 @@ namespace RocketControlledCheckpoint
 
                         if(!isAssignedMinion)
                         {
-                            // Don't let non-crew back in. (restrict = true)
+                            // Don't let non-Crew back in. (restrict = true)
                             PassengerRocketModule_RefreshAccessStatus_Patch
                                 .RefreshAccessStatus(__instance, minionIdentity, true);
                         }
@@ -185,7 +185,7 @@ namespace RocketControlledCheckpoint
                         if(isAssignedMinion && !isMinionOnBoard)
                         {
                             // For Crew, clear their orders, in case they're being told to come here by a previous Crew setting.
-                            minionIdentity.GetSMI<RocketPassengerMonitor.Instance>().ClearMoveTarget(exteriorCell); 
+                            minionIdentity.GetSMI<RocketPassengerMonitor.Instance>().ClearMoveTarget(interiorCell);
                         }
 
                         if(isAssignedMinion)
