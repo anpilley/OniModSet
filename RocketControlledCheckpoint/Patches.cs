@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using KMod;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 namespace RocketControlledCheckpoint
 {
@@ -20,7 +21,7 @@ namespace RocketControlledCheckpoint
             }
         }
 
-        
+        #region // Suit Marker
 
         [HarmonyPatch(typeof(SuitMarkerConfig))]
         [HarmonyPatch("DoPostConfigureComplete")]
@@ -42,26 +43,54 @@ namespace RocketControlledCheckpoint
             }
         }
 
+        #endregion
+
         #region // request crew side screen
-        
 
-        [HarmonyPatch(typeof(RequestCrewSideScreen))]
-        [HarmonyPatch("OnShow")]
-        public class HabitatModuleSideScreen_GetPassengerModule_Patch
+        /// <summary>
+        /// Reverse patch private method RefreshRequestButtons so i can call it from other patches.
+        /// </summary>
+        [HarmonyPatch]
+        public class RequestCrewSideScreen_RefreshRequestButtons_Patch
         {
-            public static void Postfix(RequestCrewSideScreen __instance)
+            [HarmonyReversePatch]
+            [HarmonyPatch(typeof(RequestCrewSideScreen), "RefreshRequestButtons")]
+            public static void RefreshRequestButtons(object instance)
             {
-                //Debug.Log("OnShow Gameobject Heirarchy:");
-                //GameObject go = __instance.gameObject;
-                //while(go.transform.parent != null)
-                //{
-                //    Debug.Log("GameObject: "+ go.ToString() + ": " + go.name + "; " + go.GetProperName());
-                //    go = go.transform.parent.gameObject;
-                //}
-
+                Utility.ErrorLog("RefreshRequestButtons stub");
             }
         }
 
+        /// <summary>
+        /// Append extra behavior for the OnSpawn, hooking up the onClick behavior.
+        /// </summary>
+        [HarmonyPatch(typeof(RequestCrewSideScreen))]
+        [HarmonyPatch("OnSpawn")]
+        public class RequestCrewSideScreen_OnSpawn_Patch
+        {
+            public static void Prefix(
+                RequestCrewSideScreen __instance,
+                PassengerRocketModule ___rocketModule,
+                Dictionary<KToggle, PassengerRocketModule.RequestCrewState> ___toggleMap)
+            {
+                Utility.DebugLog("Current PassengerRocketModuleState = " + (int)___rocketModule.PassengersRequested);
+
+                var limitedButtonGO = __instance.transform.Find("ButtonContainer/Buttons/Limited").gameObject;
+                var limitedButton = limitedButtonGO.GetComponent<KToggle>();
+                limitedButton.onClick += () =>
+                {
+                    ___rocketModule.RequestCrewBoard((PassengerRocketModule.RequestCrewState)3);
+                    RequestCrewSideScreen_RefreshRequestButtons_Patch.RefreshRequestButtons(__instance);
+                };
+
+                ___toggleMap.Add(limitedButton, (PassengerRocketModule.RequestCrewState)3);
+
+            }
+        }
+        #endregion
+
+
+        #region // KScreen
         /// <summary>
         /// Patch KScreen to get access to OnPrefabInit for RequestCrewSidescreen, add our extra button
         /// </summary>
@@ -86,7 +115,7 @@ namespace RocketControlledCheckpoint
                         Utility.ErrorLog("Couldn't find All or Crew button");
                         return;
                     }
-
+                    
                     // Resize the existing buttons
                     allButton.rectTransform().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 80f);
                     crewButton.rectTransform().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 80f);
@@ -103,100 +132,11 @@ namespace RocketControlledCheckpoint
                         RectTransform.Edge.Left, 25f, limitedButton.rectTransform().sizeDelta.x);
                     
                     limitedButton.GetComponent<ToolTip>().toolTip = "Limit entry to Crew Only";
+
                 }
             }
         }
-
         #endregion
-
-
-        //[HarmonyPatch]
-        //public class SuitMarker_SuitMarkerReactable_Run_Patch
-        //{
-        //    public static MethodBase TargetMethod()
-        //    {
-        //        var type = AccessTools.TypeByName("SuitMarker+SuitMarkerReactable");
-        //        if (type != null)
-        //        {
-        //            Debug.Log("Got SuitMarker+SuitMarkerReactable");
-        //            return AccessTools.FirstMethod(type, method => method.Name.Contains("Run"));
-        //        }
-
-        //        Debug.Log("Failed to find SuitMarkerReactable.Run");
-        //        return null;
-        //    }
-        //    public static bool Prefix(Object __instance, GameObject ___reactor, SuitMarker ___suitMarker)
-        //    {
-        //        if (___reactor == null || ___suitMarker == null)
-        //            return true;
-
-        //        var ac = ___suitMarker.GetComponent<AccessControl>();
-        //        if (ac == null)
-        //        {
-        //            Debug.Log("Unable to get access control component");
-        //            return true;
-        //        }
-        //        Navigator navigator = ___reactor.GetComponent<Navigator>();
-
-        //        var permission = ac.GetPermission(navigator);
-
-        //        // TODO work out what direction the dupe is facing, compare it against the permission?
-
-        //        if (permission == AccessControl.Permission.Neither)
-        //        {
-        //            // refuse to let dupe through
-        //            return false;
-        //        }
-
-        //        // allow normal tests to occur.
-        //        return true;
-
-        //    }
-        //}
-
-        //[HarmonyPatch]
-        //public class SuitMarker_SuitMarkerReactable_InternalCanBegin_Patch
-        //{
-        //    public static MethodBase TargetMethod()
-        //    {
-        //        var type = AccessTools.TypeByName("SuitMarker+SuitMarkerReactable");
-        //        if (type != null)
-        //        {
-        //            return AccessTools.FirstMethod(type, method => method.Name.Contains("InternalCanBegin"));
-        //        }
-
-        //        Debug.Log("Failed to find SuitMarkerReactable.InternalCanBegin");
-        //        return null;
-        //    }
-
-        //    public static bool Prefix(Object __instance, GameObject ___reactor, SuitMarker ___suitMarker, ref bool __result)
-        //    {
-        //        if (___reactor == null || ___suitMarker == null)
-        //            return true;
-
-        //        var ac = ___suitMarker.GetComponent<AccessControl>();
-        //        if (ac == null)
-        //        {
-        //            Debug.Log("Unable to get access control component");
-        //            return true;
-        //        }
-        //        Navigator navigator = ___reactor.GetComponent<Navigator>();
-
-        //        var permission = ac.GetPermission(navigator);
-
-        //        // TODO work out what direction the dupe is facing, compare it against the permission?
-
-        //        if (permission == AccessControl.Permission.Neither)
-        //        {
-        //            // refuse to let dupe through
-        //            __result = false;
-        //            return false;
-        //        }
-
-        //        // normal code path.
-        //        return true;
-        //    }
-        //}
 
     }
 }
