@@ -7,6 +7,7 @@ using UnityEngine;
 using KMod;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using static Components;
 
 namespace RocketControlledCheckpoint
 {
@@ -22,7 +23,9 @@ namespace RocketControlledCheckpoint
         }
 
         #region // Suit Marker
-
+        /// <summary>
+        /// Add Controlled/Uncontrolled button to suit markers when inside rocket capsules.
+        /// </summary>
         [HarmonyPatch(typeof(SuitMarkerConfig))]
         [HarmonyPatch("DoPostConfigureComplete")]
         public class SuitMarkerConfig_DoPostConfigureComplete_Patch
@@ -33,8 +36,6 @@ namespace RocketControlledCheckpoint
                 if (suitMarker)
                 {
                     go.AddOrGetDef<RocketUsageRestriction.Def>();
-
-                    go.AddOrGet<AccessControl>().controlEnabled = true;
                 }
                 else
                 {
@@ -89,7 +90,6 @@ namespace RocketControlledCheckpoint
         }
         #endregion
 
-
         #region // KScreen
         /// <summary>
         /// Patch KScreen to get access to OnPrefabInit for RequestCrewSidescreen, add our extra button
@@ -134,6 +134,87 @@ namespace RocketControlledCheckpoint
                     limitedButton.GetComponent<ToolTip>().toolTip = "Limit entry to Crew Only";
 
                 }
+            }
+        }
+        #endregion
+
+        #region // PassengerRocketModule
+
+        /// <summary>
+        /// Add a "Limit" option to passenger modules that allows crew to come and go (via access permissions),
+        /// force non-crew out.
+        /// </summary>
+        [HarmonyPatch(typeof(PassengerRocketModule))]
+        [HarmonyPatch("RefreshOrders")]
+        public class PassengerRocketModule_RefreshOrders_Patch
+        {
+            public static bool Prefix(PassengerRocketModule __instance)
+            {
+                // only works if landed, otherwise, do nothing, it'll get refreshed later.
+                if (!__instance.HasTag(GameTags.RocketOnGround) || !__instance.GetComponent<ClustercraftExteriorDoor>().HasTargetWorld()) 
+                    return true;
+
+                // we're overriding this with "3" which is a bonus enum value for an int-backed enum.
+                if (__instance.PassengersRequested == (PassengerRocketModule.RequestCrewState)3)
+                {
+                    int exteriorCell = __instance.GetComponent<NavTeleporter>().GetCell();
+                    int interiorCell = __instance.GetComponent<ClustercraftExteriorDoor>().TargetCell();
+
+                    foreach (MinionIdentity minionIdentity in Components.LiveMinionIdentities.Items)
+                    {
+                        bool isAssignedMinion = 
+                            Game.Instance.assignmentManager.assignment_groups[
+                                __instance.GetComponent<AssignmentGroupController>().AssignmentGroupID
+                                ].HasMember((IAssignableIdentity)minionIdentity.assignableProxy.Get());
+                        
+                        bool isMinionOnBoard = minionIdentity.GetMyWorldId() == (int)Grid.WorldIdx[interiorCell];
+
+                        if(!isAssignedMinion && isMinionOnBoard)
+                        {
+                            // Remove non-crew member if they're inside.
+                            minionIdentity.GetSMI<RocketPassengerMonitor.Instance>().SetMoveTarget(exteriorCell);
+                        }
+
+                        if(!isAssignedMinion)
+                        {
+                            // Don't let non-crew back in. (restrict = true)
+                            PassengerRocketModule_RefreshAccessStatus_Patch
+                                .RefreshAccessStatus(__instance, minionIdentity, true);
+                        }
+                        
+                        if(isAssignedMinion && !isMinionOnBoard)
+                        {
+                            // For Crew, clear their orders, in case they're being told to come here by a previous Crew setting.
+                            minionIdentity.GetSMI<RocketPassengerMonitor.Instance>().ClearMoveTarget(exteriorCell); 
+                        }
+
+                        if(isAssignedMinion)
+                        {
+                            // Let crew come and go. (restrict = false)
+                            PassengerRocketModule_RefreshAccessStatus_Patch
+                                .RefreshAccessStatus(__instance, minionIdentity, false);
+                        }
+                    }
+
+                    // don't continue with RefreshOrders
+                    return false;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Reverse patch RefreshAccessStatus to access the private method in PassengerRocketModule
+        /// </summary>
+        [HarmonyPatch]
+        public class PassengerRocketModule_RefreshAccessStatus_Patch
+        {
+            [HarmonyReversePatch]
+            [HarmonyPatch(typeof(PassengerRocketModule), "RefreshAccessStatus")]
+            public static void RefreshAccessStatus(object instance, MinionIdentity minion, bool restrict)
+            {
+                Utility.ErrorLog("RefreshAccessStatus stub");
             }
         }
         #endregion
