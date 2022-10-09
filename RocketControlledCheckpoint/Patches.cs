@@ -63,6 +63,7 @@ namespace RocketControlledCheckpoint
         [HarmonyPatch("OnSpawn")]
         public class RequestCrewSideScreen_OnSpawn_Patch
         {
+            public static PassengerRocketModule patchRocketModule = null;
             public static void Prefix(
                 RequestCrewSideScreen __instance,
                 PassengerRocketModule ___rocketModule,
@@ -74,12 +75,34 @@ namespace RocketControlledCheckpoint
                 var limitedButton = limitedButtonGO.GetComponent<KToggle>();
                 limitedButton.onClick += () =>
                 {
-                    ___rocketModule.RequestCrewBoard((PassengerRocketModule.RequestCrewState)3);
+                    if (patchRocketModule == null)
+                    {
+                        Utility.ErrorLog("patchRocketModule is null unexpectedly, ignoring Limit button press!");
+                        return;
+                    }
+                    patchRocketModule.RequestCrewBoard((PassengerRocketModule.RequestCrewState)3);
                     RequestCrewSideScreen_RefreshRequestButtons_Patch.RefreshRequestButtons(__instance);
+#if DEBUG
+                    Utility.DebugLog("Limit button clicked");
+#endif
                 };
 
                 ___toggleMap.Add(limitedButton, (PassengerRocketModule.RequestCrewState)3);
 
+            }
+        }
+
+        /// <summary>
+        /// Godawful hack to make sure we can access the passenger module from onClick
+        /// </summary>
+        [HarmonyPatch(typeof(RequestCrewSideScreen))]
+        [HarmonyPatch("SetTarget")]
+        public class RequestCrewSideScreen_SetTarget_Patch
+        {
+            public static void Postfix(PassengerRocketModule ___rocketModule)
+            {
+                // Pass this to the static tracking variable, so we can use it in limitedButton.onClick
+                RequestCrewSideScreen_OnSpawn_Patch.patchRocketModule = ___rocketModule;
             }
         }
         #endregion
@@ -126,6 +149,9 @@ namespace RocketControlledCheckpoint
                         RectTransform.Edge.Left, 25f, limitedButton.rectTransform().sizeDelta.x);
                     
                     limitedButton.GetComponent<ToolTip>().toolTip = "Limit entry to Crew Only";
+#if DEBUG
+                    Utility.DebugLog("Added button to RCS prefab");
+#endif
 
                 }
             }
@@ -151,6 +177,10 @@ namespace RocketControlledCheckpoint
                 // we're overriding this with "3" which is a bonus enum value for an int-backed enum.
                 if (__instance.PassengersRequested == (PassengerRocketModule.RequestCrewState)3)
                 {
+#if DEBUG
+                    Utility.DebugLog("Crew state 3 detected." + __instance);
+
+#endif
                     int exteriorCell = __instance.GetComponent<NavTeleporter>().GetCell();
                     int interiorCell = __instance.GetComponent<ClustercraftExteriorDoor>().TargetCell();
 
