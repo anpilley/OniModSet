@@ -15,6 +15,7 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
 		<FileVersion>0.0.1.0</FileVersion>
+		<SupportedContent>VANILLA_ID,EXPANSION1_ID</SupportedContent>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

@@ -1,8 +1,11 @@
 ﻿using HarmonyLib;
+using rail;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using static PinnedResourcesPanel;
 
 namespace GroupResources
 {
@@ -15,66 +18,125 @@ namespace GroupResources
                 Debug.Log("Grouped Resources Gooooooo!");
                 harmony.PatchAll();
             }
+        }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        public static Dictionary<Tag, Tag> PickupableToCategoryCache = new Dictionary<Tag, Tag>();
+
+        /// <summary>
+        /// Add category to the pickupable -> tag cache if it's not already in there.
+        /// </summary>
+        /// <param name="rowTag">The resource to lookup and add.</param>
+        public static void AddCategoryToCache(Tag rowTag)
+        {
+            if(rowTag == null)
+            {
+                Debug.LogError("[GroupResources]: rowTag unexpectedly null");
+            }
+            HashSet<Tag> resourceTags = null;
+            
+            foreach (Tag materialCategory in GameTags.MaterialCategories)
+            {
+                if (DiscoveredResources.Instance.TryGetDiscoveredResourcesFromTag(materialCategory, out resourceTags))
+                {
+                    if (resourceTags.Contains(rowTag))
+                    {
+                        PickupableToCategoryCache.Add(rowTag, materialCategory);
+                        return;
+                    }
+                }
+            }
+            foreach (Tag calorieCategory in GameTags.CalorieCategories)
+            {
+                if (DiscoveredResources.Instance.TryGetDiscoveredResourcesFromTag(calorieCategory, out resourceTags))
+                {
+                    if (resourceTags.Contains(rowTag))
+                    {
+                        PickupableToCategoryCache.Add(rowTag, calorieCategory);
+                        return;
+                    }
+                }
+            }
+
+            foreach (Tag unitCategory in GameTags.UnitCategories)
+            {
+                if (DiscoveredResources.Instance.TryGetDiscoveredResourcesFromTag(unitCategory, out resourceTags))
+                {
+                    if (resourceTags.Contains(rowTag))
+                    {
+                        PickupableToCategoryCache.Add(rowTag, unitCategory);
+                        return;
+                    }
+                }
+            }
+
+            // Miscellaneous
+            if (DiscoveredResources.Instance.TryGetDiscoveredResourcesFromTag(GameTags.Miscellaneous, out resourceTags))
+            {
+                if (resourceTags.Contains(rowTag))
+                {
+                    PickupableToCategoryCache.Add(rowTag, GameTags.Miscellaneous);
+                    return;
+                }
+            }
+
+            // MiscPickupable
+            if (DiscoveredResources.Instance.TryGetDiscoveredResourcesFromTag(GameTags.MiscPickupable, out resourceTags))
+            {
+                if (resourceTags.Contains(rowTag))
+                {
+                    PickupableToCategoryCache.Add(rowTag, GameTags.MiscPickupable);
+                    return;
+                }
+            }
+
+            Debug.LogError("[GroupResources]: Couldn't find a category for Tag: " + rowTag.ProperName());
         }
 
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("SortRows")]
         public class Db_Initialize_Patch
         {
-            private static bool Prefix(PinnedResourcesPanel __instance, ref Dictionary<Tag, GameObject> ___rows)
+            /// <summary>
+            /// Sort the pinned resources list by category, name.
+            /// </summary>
+            /// <param name="__instance">this</param>
+            /// <param name="___rows">set of pinned tags and gameobjects</param>
+            /// <param name="___clearNewButton">button</param>
+            /// <param name="___seeAllButton">button</param>
+            /// <returns></returns>
+            private static bool Prefix(PinnedResourcesPanel __instance, ref Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> ___rows, MultiToggle ___clearNewButton, MultiToggle ___seeAllButton)
             {
-                //Debug.Log("Group Resources!");
-                //List<Tag> categories = new List<Tag>();
-                //foreach (Tag materialCategory in GameTags.MaterialCategories)
-                //    categories.Add(materialCategory);
-                //foreach (Tag calorieCategory in GameTags.CalorieCategories)
-                //    categories.Add(calorieCategory);
-                //foreach (Tag unitCategory in GameTags.UnitCategories)
-                //    categories.Add(unitCategory);
-
-                List<KeyValuePair<Tag, Tag>> tagList = new List<KeyValuePair<Tag, Tag>>();
-                foreach (KeyValuePair<Tag, GameObject> row in ___rows)
+                foreach (Tag rowTag in ___rows.Keys)
                 {
-                    var f = row.Value.GetComponent<KPrefabID>();
-                    Tag cat = Tag.Invalid;
-                    if(GameTags.AllCategories.Contains(row.Key))
+                    // look up in existing tag->category lookup cache
+                    if (!PickupableToCategoryCache.ContainsKey(rowTag))
                     {
-
+                        // Add it if it's not already there.
+                        AddCategoryToCache(rowTag);
                     }
-                    if (f != null)
-                        cat = DiscoveredResources.GetCategoryForEntity(f);
-
-                    tagList.Add(new KeyValuePair<Tag, Tag>(row.Key,cat));
                 }
 
-                tagList.Sort((Comparison<KeyValuePair<Tag,Tag>>)((a, b) =>
-                {
-                    int catComp = 0;
-                    if (a.Value != null && b.Value != null)
-                    {
-                        
-                        catComp = a.Value.ProperNameStripLink().CompareTo(b.Value.ProperNameStripLink());
-                    }
-                    if (catComp == 0)
-                        return a.Key.ProperNameStripLink().CompareTo(b.Key.ProperNameStripLink());
-                    else return catComp;
-                    }));
+                List<PinnedResourcesPanel.PinnedResourceRow> pinnedResourceRowList = new List<PinnedResourcesPanel.PinnedResourceRow>();
+                foreach (KeyValuePair<Tag, PinnedResourcesPanel.PinnedResourceRow> row in ___rows)
+                    pinnedResourceRowList.Add(row.Value);
 
+                pinnedResourceRowList.Sort((Comparison<PinnedResourcesPanel.PinnedResourceRow>)((a, b) => {
+                    if (PickupableToCategoryCache[a.Tag] == PickupableToCategoryCache[b.Tag])
+                        return a.SortableNameWithoutLink.CompareTo(b.SortableNameWithoutLink);
 
-                foreach (KeyValuePair<Tag,Tag> key in tagList)
-                    ___rows[key.Key].transform.SetAsLastSibling();
-                
-                __instance.clearNewButton.transform.SetAsLastSibling();
-                __instance.seeAllButton.transform.SetAsLastSibling();
+                    return PickupableToCategoryCache[a.Tag].ProperNameStripLink().CompareTo(PickupableToCategoryCache[b.Tag].ProperNameStripLink());
+                }));  // sort alphabetically, group by category.
+
+                foreach (var item in pinnedResourceRowList)
+                    ___rows[item.Tag].gameObject.transform.SetAsLastSibling();
+                ___clearNewButton.transform.SetAsLastSibling();
+                ___seeAllButton.transform.SetAsLastSibling();
 
                 return false;
             }
-
-            //public static void Postfix()
-            //{
-            //    //Debug.Log("I execute after Db.Initialize!");
-            //}
         }
     }
 }

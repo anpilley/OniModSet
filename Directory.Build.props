@@ -28,8 +28,7 @@
     <Authors>Andrew Pilley</Authors>
     <Copyright>Copyright ©Andrew Pilley 2022</Copyright>
     <TargetFramework>net471</TargetFramework>
-    <SupportedContent>VANILLA_ID,EXPANSION1_ID</SupportedContent>
-    <LastWorkingBuild>0</LastWorkingBuild>
+    <LastWorkingBuild>526233</LastWorkingBuild>
     <DistributeMod>true</DistributeMod>
     <ArchivedVersionPath></ArchivedVersionPath>
     <UsePublicized>false</UsePublicized>
