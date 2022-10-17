@@ -97,7 +97,7 @@ namespace GroupResources
 
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("SortRows")]
-        public class Db_Initialize_Patch
+        public class PinnedResourcesPanel_SortRows_Patch
         {
             /// <summary>
             /// Sort the pinned resources list by category, name.
@@ -118,7 +118,7 @@ namespace GroupResources
                         AddCategoryToCache(rowTag);
                     }
                 }
-
+                
                 List<PinnedResourcesPanel.PinnedResourceRow> pinnedResourceRowList = new List<PinnedResourcesPanel.PinnedResourceRow>();
                 foreach (KeyValuePair<Tag, PinnedResourcesPanel.PinnedResourceRow> row in ___rows)
                     pinnedResourceRowList.Add(row.Value);
@@ -130,12 +130,61 @@ namespace GroupResources
                     return PickupableToCategoryCache[a.Tag].ProperNameStripLink().CompareTo(PickupableToCategoryCache[b.Tag].ProperNameStripLink());
                 }));  // sort alphabetically, group by category.
 
+                Tag category = null;
+
+                Color lightBlue = new Color(0.013f, 0.78f, 1.0f);
+
+                Debug.Log("[Grouped Resources]: Category switching");
+                Color categoryColor = lightBlue;
                 foreach (var item in pinnedResourceRowList)
+                {
+                    if (___rows[item.Tag].gameObject.activeSelf) // rows don't get removed between spaced out views, so skip changing the color of inactive ones.
+                    {
+                        if (PickupableToCategoryCache[item.Tag] != category)
+                        {
+                            category = PickupableToCategoryCache[item.Tag];
+
+                            if (categoryColor == lightBlue)
+                            {
+                                Debug.Log("[Grouped Resources]: White: " + category.ProperNameStripLink());
+                                categoryColor = Color.white;
+                            }
+                            else
+                            {
+                                Debug.Log("[Grouped Resources]: Blue: " + category.ProperNameStripLink());
+                                categoryColor = lightBlue;
+                            }
+                        }
+                    }
                     ___rows[item.Tag].gameObject.transform.SetAsLastSibling();
+                    
+                    var categoryBG = ___rows[item.Tag].gameObject.transform.Find("BG/CategoryBG").gameObject;
+                    var img = categoryBG.GetComponent<Image>();
+                    
+                    img.color = categoryColor;
+                    img.SetAlpha(0.5f);
+
+                }
                 ___clearNewButton.transform.SetAsLastSibling();
                 ___seeAllButton.transform.SetAsLastSibling();
 
                 return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(PinnedResourcesPanel))]
+        [HarmonyPatch("CreateRow")]
+        public class PinnedResourcesPanel_CreateRow_Patch
+        {
+            public static void Postfix(PinnedResourcesPanel __instance, Tag tag, ref PinnedResourcesPanel.PinnedResourceRow __result)
+            {
+                // Tack on an extra BG, so we can shade that.
+                var bg = __result.gameObject.transform.Find("BG").gameObject;
+                var additiveBG = Util.KInstantiate(bg, bg, "CategoryBG");
+                additiveBG.rectTransform().localScale = new Vector3(1.0f, 1.0f);
+                additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Left, 0.0f, bg.rectTransform().rect.width);
+                additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 0.0f, bg.rectTransform().rect.height);
+
             }
         }
     }
