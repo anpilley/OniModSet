@@ -3,9 +3,12 @@ using rail;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static PinnedResourcesPanel;
+using static STRINGS.DUPLICANTS.PERSONALITIES;
 
 namespace GroupResources
 {
@@ -21,7 +24,7 @@ namespace GroupResources
         }
 
         /// <summary>
-        /// 
+        /// cache of the pickupables to category tags, since the lookup is expensive.
         /// </summary>
         public static Dictionary<Tag, Tag> PickupableToCategoryCache = new Dictionary<Tag, Tag>();
 
@@ -99,6 +102,8 @@ namespace GroupResources
         [HarmonyPatch("SortRows")]
         public class PinnedResourcesPanel_SortRows_Patch
         {
+            private static Color lightBlue = new Color(0.013f, 0.78f, 1.0f);
+
             /// <summary>
             /// Sort the pinned resources list by category, name.
             /// </summary>
@@ -131,11 +136,9 @@ namespace GroupResources
                 }));  // sort alphabetically, group by category.
 
                 Tag category = null;
-
-                Color lightBlue = new Color(0.013f, 0.78f, 1.0f);
-
-                Debug.Log("[Grouped Resources]: Category switching");
+                
                 Color categoryColor = lightBlue;
+
                 foreach (var item in pinnedResourceRowList)
                 {
                     if (___rows[item.Tag].gameObject.activeSelf) // rows don't get removed between spaced out views, so skip changing the color of inactive ones.
@@ -146,12 +149,10 @@ namespace GroupResources
 
                             if (categoryColor == lightBlue)
                             {
-                                Debug.Log("[Grouped Resources]: White: " + category.ProperNameStripLink());
                                 categoryColor = Color.white;
                             }
                             else
                             {
-                                Debug.Log("[Grouped Resources]: Blue: " + category.ProperNameStripLink());
                                 categoryColor = lightBlue;
                             }
                         }
@@ -172,19 +173,123 @@ namespace GroupResources
             }
         }
 
+        //[HarmonyPatch(typeof(QuickLayout))]
+        //[HarmonyPatch("Layout")]
+        //public class QuickLayout_Layout_Patch
+        //{
+        //    public static void Prefix(QuickLayout __instance, Vector2 ____offset)
+        //    {
+        //        Debug.Log("QuickLayout: " + __instance.transform.gameObject.name);
+        //        if (__instance.transform.gameObject.name == "EntryContainer")
+        //        {
+        //            Debug.Log("QuickLayout: Got EntryContainer, offset: "+____offset);
+        //        }
+        //    }
+        //}
+
+
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("CreateRow")]
         public class PinnedResourcesPanel_CreateRow_Patch
         {
-            public static void Postfix(PinnedResourcesPanel __instance, Tag tag, ref PinnedResourcesPanel.PinnedResourceRow __result)
+            public static GameObject resourcesHeader = null;
+            public static Dictionary<Tag, GameObject> materialHeaders = new Dictionary<Tag, GameObject>();
+            public static void Postfix(PinnedResourcesPanel __instance, Tag tag, ref PinnedResourcesPanel.PinnedResourceRow __result, QuickLayout ___rowContainerLayout)
             {
+                // look up in existing tag->category lookup cache
+                if (!PickupableToCategoryCache.ContainsKey(tag))
+                {
+                    // Add it if it's not already there.
+                    AddCategoryToCache(tag);
+                }
+
+                var category = PickupableToCategoryCache[tag];
+
+                // The parent to this should be the EntryContainer, parent to that is the Resource header.
+                if (!resourcesHeader)
+                {
+                    ___rowContainerLayout.ForceUpdate();
+                    resourcesHeader = __result.gameObject.transform.parent.parent.Find("HeaderLayout").gameObject;
+                }
+
+                if (!materialHeaders.ContainsKey(category))
+                {
+                    var categoryHeader = Util.KInstantiateUI(resourcesHeader, __instance.rowContainer, true);
+                    categoryHeader.name = category.ProperNameStripLink(); // TODO translation?
+
+                    categoryHeader.rectTransform().localScale = new Vector3(1.0f, 1.0f);
+
+                    categoryHeader.GetComponentInChildren<LocText>().SetText(category.ProperNameStripLink());
+
+                    categoryHeader.rectTransform().anchoredPosition = new Vector2(0.0f, 0.0f);
+                    categoryHeader.rectTransform().pivot = new Vector2(0.0f, 0.0f);
+                    categoryHeader.rectTransform().anchorMax = new Vector2(0.0f, 1.0f);
+                    categoryHeader.rectTransform().anchorMin = new Vector2(0.0f, 1.0f);
+
+                    categoryHeader.rectTransform().SetLocalPosition((Vector3)new Vector2(0.0f, 0.0f));
+
+                    Debug.Log("[GroupResources]: Adding category " + category.ProperNameStripLink());
+                    materialHeaders.Add(category, categoryHeader);
+
+                    //Debug.Log("[Group Resources]: anchor: (" + categoryHeader.rectTransform().anchoredPosition.x + "," + categoryHeader.rectTransform().anchoredPosition.y + ") " + categoryHeader.ToString());
+                    //Debug.Log("[Group Resources]: pivot: (" + categoryHeader.rectTransform().pivot.x + "," + categoryHeader.rectTransform().pivot.y + ")");
+                    //Debug.Log("[Group Resources]: anchormax: (" + categoryHeader.rectTransform().anchorMax.x + "," + categoryHeader.rectTransform().anchorMax.y + ")");
+                    //Debug.Log("[Group Resources]: anchormin: (" + categoryHeader.rectTransform().anchorMin.x + "," + categoryHeader.rectTransform().anchorMin.y + ")");
+                    //Debug.Log("[Group Resources]: row anchor: (" + __result.gameObject.rectTransform().anchoredPosition.x + "," + __result.gameObject.rectTransform().anchoredPosition.y + ")");
+                    //Debug.Log("[Group Resources]: row pivot: (" + __result.gameObject.rectTransform().pivot.x + "," + __result.gameObject.rectTransform().pivot.y + ")");
+                    //Debug.Log("[Group Resources]: anchormax: (" + __result.gameObject.rectTransform().anchorMax.x + "," + __result.gameObject.rectTransform().anchorMax.y + ")");
+                    //Debug.Log("[Group Resources]: anchormin: (" + __result.gameObject.rectTransform().anchorMin.x + "," + __result.gameObject.rectTransform().anchorMin.y + ")");
+
+                }
+
                 // Tack on an extra BG, so we can shade that.
                 var bg = __result.gameObject.transform.Find("BG").gameObject;
                 var additiveBG = Util.KInstantiate(bg, bg, "CategoryBG");
                 additiveBG.rectTransform().localScale = new Vector3(1.0f, 1.0f);
                 additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Left, 0.0f, bg.rectTransform().rect.width);
                 additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 0.0f, bg.rectTransform().rect.height);
+            }
+        }
+        
+        [HarmonyPatch(typeof(PinnedResourcesPanel))]
+        [HarmonyPatch("Populate")]
+        public class PinnedResourcesPanel_Populate_Patch
+        {
+            public static void Postfix(ref Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> ___rows)
+            {
+                Debug.Log("ForcedUpdate finished.");
+                if(PinnedResourcesPanel_CreateRow_Patch.materialHeaders != null)
+                {
+                    foreach (var categoryHeader in PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Values)
+                    {
+                        PrintDetails(categoryHeader, 0);
+                    }
 
+
+                    foreach (var rowBits in ___rows.Values)
+                    {
+                        Debug.Log("[Group Resources]: position: (" + rowBits.gameObject.rectTransform().position.x + "," + rowBits.gameObject.rectTransform().position.y + ") " + rowBits.gameObject.ToString());
+                        Debug.Log("[Group Resources]: anchor: (" + rowBits.gameObject.rectTransform().anchoredPosition.x + "," + rowBits.gameObject.rectTransform().anchoredPosition.y + ")");
+                        Debug.Log("[Group Resources]: pivot: (" + rowBits.gameObject.rectTransform().pivot.x + "," + rowBits.gameObject.rectTransform().pivot.y + ")");
+                        Debug.Log("[Group Resources]: anchormax: (" + rowBits.gameObject.rectTransform().anchorMax.x + "," + rowBits.gameObject.rectTransform().anchorMax.y + ")");
+                        Debug.Log("[Group Resources]: anchormin: (" + rowBits.gameObject.rectTransform().anchorMin.x + "," + rowBits.gameObject.rectTransform().anchorMin.y + ")");
+                    }
+                }
+            }
+
+            private static void PrintDetails(GameObject target, int level)
+            {
+                Debug.Log("Level: " + level + ", " + target.name);
+                Debug.Log("[Group Resources]: position: (" + target.rectTransform().position.x + "," + target.rectTransform().position.y + ")" );
+                Debug.Log("[Group Resources]: anchor: (" + target.rectTransform().anchoredPosition.x + "," + target.rectTransform().anchoredPosition.y + ")");
+                Debug.Log("[Group Resources]: pivot: (" + target.rectTransform().pivot.x + "," + target.rectTransform().pivot.y + ")");
+                Debug.Log("[Group Resources]: anchormax: (" + target.rectTransform().anchorMax.x + "," + target.rectTransform().anchorMax.y + ")");
+                Debug.Log("[Group Resources]: anchormin: (" + target.rectTransform().anchorMin.x + "," + target.rectTransform().anchorMin.y + ")");
+
+                for (int index = 0;  index < target.transform.childCount; index++)
+                {
+                    PrintDetails(target.transform.GetChild(index).gameObject, level+1);
+                }
             }
         }
     }
