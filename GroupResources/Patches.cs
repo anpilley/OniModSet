@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using rail;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Resources;
@@ -239,19 +240,12 @@ namespace GroupResources
             }
         }
 
-        public class CategoryHeader
-        {
-            public GameObject go;
-            public string name;
-        }
-
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("CreateRow")]
-        public class PinnedResourcesPanel_CreateRow_Patch
+        public class PinnedResourcesPanel_CreateRow_Patch : MonoBehaviour
         {
             public static GameObject resourcesHeader = null;
-            public static Dictionary<Tag, CategoryHeader> materialHeaders = new Dictionary<Tag, CategoryHeader>();
-            public static bool scheduled = false;
+            public static Dictionary<Tag, GameObject> materialHeaders = new Dictionary<Tag, GameObject>();
             public static void Postfix(PinnedResourcesPanel __instance, Tag tag, ref PinnedResourcesPanel.PinnedResourceRow __result, QuickLayout ___rowContainerLayout)
             {
                 // look up in existing tag->category lookup cache
@@ -287,14 +281,10 @@ namespace GroupResources
                     //categoryHeader.rectTransform().SetLocalPosition((Vector3)new Vector2(0.0f, 0.0f));
 
                     Debug.Log("[GroupResources]: Adding category " + category.ProperNameStripLink());
-                    // defer creation until later.
-                    materialHeaders.Add(category, new CategoryHeader() { name= category.ProperNameStripLink(), go = null});
+                    // defer creation until later, since copying the header now causes issues.
 
-                    if (!scheduled)
-                    {
-                        GameScheduler.Instance.Schedule("GroupResourcesCreateCategoryHeaders", 0f, MakeHeaders);
-                        scheduled = true;
-                    }
+                     __instance.StartCoroutine(MakeHeaders(category));
+                      
 
                     //Debug.Log("[Group Resources]: anchor: (" + categoryHeader.rectTransform().anchoredPosition.x + "," + categoryHeader.rectTransform().anchoredPosition.y + ") " + categoryHeader.ToString());
                     //Debug.Log("[Group Resources]: pivot: (" + categoryHeader.rectTransform().pivot.x + "," + categoryHeader.rectTransform().pivot.y + ")");
@@ -314,30 +304,29 @@ namespace GroupResources
                 additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Left, 0.0f, bg.rectTransform().rect.width);
                 additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 0.0f, bg.rectTransform().rect.height);
 
-                void MakeHeaders(object go)
+                IEnumerator MakeHeaders(Tag coCategory)
                 {
-                    foreach(Tag headerTag in materialHeaders.Keys)
+                    yield return null;
+                    if(!materialHeaders.ContainsKey(coCategory))
                     {
-                        if(materialHeaders[headerTag].go == null)
-                        {
-                            var categoryHeader = Util.KInstantiateUI(resourcesHeader, __instance.rowContainer, true);
-                            categoryHeader.name = materialHeaders[headerTag].name;
+                        var categoryHeader = Util.KInstantiateUI(resourcesHeader, __instance.rowContainer, true);
+                        categoryHeader.name = coCategory.ProperNameStripLink();
 
-                            categoryHeader.rectTransform().localScale = new Vector3(1.0f, 1.0f);
+                        categoryHeader.rectTransform().localScale = new Vector3(1.0f, 1.0f);
 
-                            categoryHeader.GetComponentInChildren<LocText>().SetText(headerTag.ProperNameStripLink()); // TODO translation?
+                        categoryHeader.GetComponentInChildren<LocText>().SetText(coCategory.ProperNameStripLink()); // TODO translation?
 
-                            //categoryHeader.rectTransform().anchoredPosition = new Vector2(0.0f, 0.0f);
-                            categoryHeader.rectTransform().pivot = new Vector2(1.0f, 1.0f);
-                            //categoryHeader.rectTransform().anchorMax = new Vector2(0.0f, 1.0f);
-                            //categoryHeader.rectTransform().anchorMin = new Vector2(0.0f, 1.0f);
-                            materialHeaders[headerTag].go = categoryHeader;
-                        }
+                        //categoryHeader.rectTransform().anchoredPosition = new Vector2(0.0f, 0.0f);
+                        categoryHeader.rectTransform().pivot = new Vector2(1.0f, 1.0f);
+                        //categoryHeader.rectTransform().anchorMax = new Vector2(0.0f, 1.0f);
+                        //categoryHeader.rectTransform().anchorMin = new Vector2(0.0f, 1.0f);
+                        materialHeaders.Add(coCategory, categoryHeader);
+                        Debug.Log("[GroupResources]: Coroutine: added header.");
                     }
-
+                    
                     PinnedResourcesPane_SortRows_ReversePatch.SortRows(__instance);
                     ___rowContainerLayout.ForceUpdate();
-                    scheduled = false;
+                    yield return null;
                 }
             }
         }
