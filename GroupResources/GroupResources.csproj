@@ -2,8 +2,8 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
-		<AssemblyTitle>Group Favorite Resources</AssemblyTitle>
-		<Description>Group Favorite Resources by Category type.</Description>
+    <AssemblyTitle>Group Favorite Resources</AssemblyTitle>
+    <Description>Group Favorite Resources by Category type.</Description>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{C00CFDA3-8904-4731-9D3E-5ACB28890825}</ProjectGuid>
@@ -14,8 +14,8 @@
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
-		<FileVersion>0.5.0.0</FileVersion>
-		<SupportedContent>VANILLA_ID,EXPANSION1_ID</SupportedContent>
+    <FileVersion>0.5.0.0</FileVersion>
+    <SupportedContent>VANILLA_ID,EXPANSION1_ID</SupportedContent>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="Patches.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utility.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

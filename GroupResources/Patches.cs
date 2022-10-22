@@ -36,12 +36,12 @@ namespace GroupResources
         /// <param name="rowTag">The resource to lookup and add.</param>
         public static void AddCategoryToCache(Tag rowTag)
         {
-            if(rowTag == null)
+            if (rowTag == null)
             {
                 Debug.LogError("[GroupResources]: rowTag unexpectedly null");
             }
             HashSet<Tag> resourceTags = null;
-            
+
             foreach (Tag materialCategory in GameTags.MaterialCategories)
             {
                 if (DiscoveredResources.Instance.TryGetDiscoveredResourcesFromTag(materialCategory, out resourceTags))
@@ -114,7 +114,7 @@ namespace GroupResources
             /// <param name="___clearNewButton">button</param>
             /// <param name="___seeAllButton">button</param>
             /// <returns></returns>
-            private static bool Prefix(PinnedResourcesPanel __instance, ref Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> ___rows, MultiToggle ___clearNewButton, MultiToggle ___seeAllButton)
+            public static bool Prefix(PinnedResourcesPanel __instance, Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> ___rows, MultiToggle ___clearNewButton, MultiToggle ___seeAllButton)
             {
                 foreach (Tag rowTag in ___rows.Keys)
                 {
@@ -125,12 +125,13 @@ namespace GroupResources
                         AddCategoryToCache(rowTag);
                     }
                 }
-                
+
                 List<PinnedResourcesPanel.PinnedResourceRow> pinnedResourceRowList = new List<PinnedResourcesPanel.PinnedResourceRow>();
                 foreach (KeyValuePair<Tag, PinnedResourcesPanel.PinnedResourceRow> row in ___rows)
                     pinnedResourceRowList.Add(row.Value);
 
-                pinnedResourceRowList.Sort((Comparison<PinnedResourcesPanel.PinnedResourceRow>)((a, b) => {
+                pinnedResourceRowList.Sort((Comparison<PinnedResourcesPanel.PinnedResourceRow>)((a, b) =>
+                {
                     if (PickupableToCategoryCache[a.Tag] == PickupableToCategoryCache[b.Tag])
                         return a.SortableNameWithoutLink.CompareTo(b.SortableNameWithoutLink);
 
@@ -138,8 +139,13 @@ namespace GroupResources
                 }));  // sort alphabetically, group by category.
 
                 Tag category = null;
-                
+
                 Color categoryColor = lightBlue;
+
+                foreach (Tag clearCategory in PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Keys)
+                {
+                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders[clearCategory].SetActive(false);
+                }
 
                 foreach (var item in pinnedResourceRowList)
                 {
@@ -147,7 +153,17 @@ namespace GroupResources
                     {
                         if (PickupableToCategoryCache[item.Tag] != category)
                         {
-                            category = PickupableToCategoryCache[item.Tag];
+                            if (PickupableToCategoryCache[item.Tag] != category)
+                            {
+                                category = PickupableToCategoryCache[item.Tag];
+
+                                // since creation of the category headers is deferred, this might not contain a key yet.
+                                if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders.ContainsKey(category))
+                                {
+                                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].SetActive(true);
+                                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].transform.SetAsLastSibling();
+                                }
+                            }
 
                             if (categoryColor == lightBlue)
                             {
@@ -160,14 +176,15 @@ namespace GroupResources
                         }
                     }
                     ___rows[item.Tag].gameObject.transform.SetAsLastSibling();
-                    
+
                     var categoryBG = ___rows[item.Tag].gameObject.transform.Find("BG/CategoryBG").gameObject;
                     var img = categoryBG.GetComponent<Image>();
-                    
+
                     img.color = categoryColor;
                     img.SetAlpha(0.5f);
 
                 }
+
                 ___clearNewButton.transform.SetAsLastSibling();
                 ___seeAllButton.transform.SetAsLastSibling();
 
@@ -175,78 +192,20 @@ namespace GroupResources
             }
         }
 
-        //[HarmonyPatch(typeof(QuickLayout))]
-        //[HarmonyPatch("Layout")]
-        //public class QuickLayout_Layout_Patch
-        //{
-        //    public static void Prefix(QuickLayout __instance, Vector2 ____offset)
-        //    {
-        //        Debug.Log("QuickLayout: " + __instance.transform.gameObject.name);
-        //        if (__instance.transform.gameObject.name == "EntryContainer")
-        //        {
-        //            Debug.Log("QuickLayout: Got EntryContainer, offset: "+____offset);
-        //        }
-        //    }
-        //}
-
-        //[HarmonyPatch(typeof(PinnedResourcesPanel))]
-        //[HarmonyPatch("Render1000ms")]
-        //public class PinnedResourcesPanel_Render1000ms_Patch
-        //{
-        //    public static bool test = false;
-        //    public static void Postfix(PinnedResourcesPanel __instance, ref Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> ___rows, QuickLayout ___rowContainerLayout)
-        //    {
-        //        if (test == true)
-        //            return;
-
-        //        Debug.Log("[Group resources]: Render1000ms");
-
-        //        if(___rows.Count > 0)
-        //        {
-        //            test = true;
-        //            Tag tag = ___rows.Keys.First<Tag>();
-        //            var headerRef = ___rows[tag].gameObject.transform.parent.parent.Find("HeaderLayout").gameObject;
-        //            var categoryHeader = Util.KInstantiateUI(headerRef, __instance.rowContainer, true);
-        //            categoryHeader.name = tag.ProperNameStripLink(); // TODO translation?
-
-        //            categoryHeader.rectTransform().localScale = new Vector3(1.0f, 1.0f);
-
-        //            categoryHeader.GetComponentInChildren<LocText>().SetText(tag.ProperNameStripLink());
-
-        //            categoryHeader.rectTransform().anchoredPosition = new Vector2(0.0f, 0.0f);
-        //            categoryHeader.rectTransform().pivot = new Vector2(1.0f, 0.0f);
-        //            categoryHeader.rectTransform().anchorMax = new Vector2(0.0f, 1.0f);
-        //            categoryHeader.rectTransform().anchorMin = new Vector2(0.0f, 1.0f);
-
-        //            categoryHeader.rectTransform().SetLocalPosition((Vector3)new Vector2(0.0f, 0.0f));
-
-        //            PinnedResourcesPane_SortRows_ReversePatch.SortRows(__instance);
-        //            ___rowContainerLayout.ForceUpdate();
-                    
-
-        //            Debug.Log("[GroupResources]: Render1000ms Adding category " + tag.ProperNameStripLink());
-        //        }
-        //    }
-        //}
-
-        [HarmonyPatch]
-        public class PinnedResourcesPane_SortRows_ReversePatch
-        {
-            [HarmonyReversePatch]
-            [HarmonyPatch(typeof(PinnedResourcesPanel), "SortRows")]
-            public static void SortRows(object instance)
-            {
-                Debug.LogError("SortRows stub");
-            }
-        }
-
+        /// <summary>
+        /// Create Row adds a background to each resource entry, and adds new categories as new ones show up.
+        /// </summary>
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("CreateRow")]
-        public class PinnedResourcesPanel_CreateRow_Patch : MonoBehaviour
+        public class PinnedResourcesPanel_CreateRow_Patch 
         {
             public static GameObject resourcesHeader = null;
             public static Dictionary<Tag, GameObject> materialHeaders = new Dictionary<Tag, GameObject>();
-            public static void Postfix(PinnedResourcesPanel __instance, Tag tag, ref PinnedResourcesPanel.PinnedResourceRow __result, QuickLayout ___rowContainerLayout)
+            public static void Postfix(PinnedResourcesPanel __instance, Tag tag, 
+                ref PinnedResourcesPanel.PinnedResourceRow __result, 
+                QuickLayout ___rowContainerLayout, 
+                Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> ___rows,
+                MultiToggle ___clearNewButton, MultiToggle ___seeAllButton)
             {
                 // look up in existing tag->category lookup cache
                 if (!PickupableToCategoryCache.ContainsKey(tag))
@@ -265,37 +224,13 @@ namespace GroupResources
 
                 if (!materialHeaders.ContainsKey(category))
                 {
-                    //var categoryHeader = Util.KInstantiateUI(resourcesHeader, __instance.rowContainer, true);
-                    //categoryHeader.name = category.ProperNameStripLink(); // TODO translation?
-
-                    //categoryHeader.rectTransform().localScale = new Vector3(1.0f, 1.0f);
-
-                    //categoryHeader.GetComponentInChildren<LocText>().SetText(category.ProperNameStripLink());
-
-                    //categoryHeader.rectTransform().anchoredPosition = new Vector2(0.0f, 0.0f);
-                    //categoryHeader.rectTransform().pivot = new Vector2(0.0f, 0.0f);
-                    //categoryHeader.rectTransform().anchorMax = new Vector2(0.0f, 1.0f);
-                    //categoryHeader.rectTransform().anchorMin = new Vector2(0.0f, 1.0f);
-
-
-                    //categoryHeader.rectTransform().SetLocalPosition((Vector3)new Vector2(0.0f, 0.0f));
-
                     Debug.Log("[GroupResources]: Adding category " + category.ProperNameStripLink());
                     // defer creation until later, since copying the header now causes issues.
 
-                     __instance.StartCoroutine(MakeHeaders(category));
-                      
-
-                    //Debug.Log("[Group Resources]: anchor: (" + categoryHeader.rectTransform().anchoredPosition.x + "," + categoryHeader.rectTransform().anchoredPosition.y + ") " + categoryHeader.ToString());
-                    //Debug.Log("[Group Resources]: pivot: (" + categoryHeader.rectTransform().pivot.x + "," + categoryHeader.rectTransform().pivot.y + ")");
-                    //Debug.Log("[Group Resources]: anchormax: (" + categoryHeader.rectTransform().anchorMax.x + "," + categoryHeader.rectTransform().anchorMax.y + ")");
-                    //Debug.Log("[Group Resources]: anchormin: (" + categoryHeader.rectTransform().anchorMin.x + "," + categoryHeader.rectTransform().anchorMin.y + ")");
-                    //Debug.Log("[Group Resources]: row anchor: (" + __result.gameObject.rectTransform().anchoredPosition.x + "," + __result.gameObject.rectTransform().anchoredPosition.y + ")");
-                    //Debug.Log("[Group Resources]: row pivot: (" + __result.gameObject.rectTransform().pivot.x + "," + __result.gameObject.rectTransform().pivot.y + ")");
-                    //Debug.Log("[Group Resources]: anchormax: (" + __result.gameObject.rectTransform().anchorMax.x + "," + __result.gameObject.rectTransform().anchorMax.y + ")");
-                    //Debug.Log("[Group Resources]: anchormin: (" + __result.gameObject.rectTransform().anchorMin.x + "," + __result.gameObject.rectTransform().anchorMin.y + ")");
-
+                    __instance.StartCoroutine(MakeHeaders(category));
                 }
+
+                //GameScheduler.Instance.Schedule("DumpHeaderObjects", 5.0f, Utility.DumpDetails, (object)___rows);
 
                 // Tack on an extra BG, so we can shade that.
                 var bg = __result.gameObject.transform.Find("BG").gameObject;
@@ -307,7 +242,7 @@ namespace GroupResources
                 IEnumerator MakeHeaders(Tag coCategory)
                 {
                     yield return null;
-                    if(!materialHeaders.ContainsKey(coCategory))
+                    if (!materialHeaders.ContainsKey(coCategory))
                     {
                         var categoryHeader = Util.KInstantiateUI(resourcesHeader, __instance.rowContainer, true);
                         categoryHeader.name = coCategory.ProperNameStripLink();
@@ -316,61 +251,19 @@ namespace GroupResources
 
                         categoryHeader.GetComponentInChildren<LocText>().SetText(coCategory.ProperNameStripLink()); // TODO translation?
 
-                        //categoryHeader.rectTransform().anchoredPosition = new Vector2(0.0f, 0.0f);
                         categoryHeader.rectTransform().pivot = new Vector2(1.0f, 1.0f);
-                        //categoryHeader.rectTransform().anchorMax = new Vector2(0.0f, 1.0f);
-                        //categoryHeader.rectTransform().anchorMin = new Vector2(0.0f, 1.0f);
+
+                        // TODO adjust internal bits here
                         materialHeaders.Add(coCategory, categoryHeader);
-                        Debug.Log("[GroupResources]: Coroutine: added header.");
+                        //Debug.Log("[GroupResources]: Coroutine: added header " + coCategory.ProperNameStripLink() + ", headers total: " + materialHeaders.Count);
                     }
-                    
-                    PinnedResourcesPane_SortRows_ReversePatch.SortRows(__instance);
+
+                    // For some reason, using a reverse patch of SortRows wasn't executing. No idea why. We'll just call it directly.
+                    PinnedResourcesPanel_SortRows_Patch.Prefix(__instance, ___rows, ___clearNewButton, ___seeAllButton);
                     ___rowContainerLayout.ForceUpdate();
                     yield return null;
                 }
             }
         }
-        
-        //[HarmonyPatch(typeof(PinnedResourcesPanel))]
-        //[HarmonyPatch("Populate")]
-        //public class PinnedResourcesPanel_Populate_Patch
-        //{
-        //    public static void Postfix(ref Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> ___rows)
-        //    {
-        //        Debug.Log("ForcedUpdate finished.");
-        //        if(PinnedResourcesPanel_CreateRow_Patch.materialHeaders != null)
-        //        {
-        //            foreach (var categoryHeader in PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Values)
-        //            {
-        //                PrintDetails(categoryHeader, 0);
-        //            }
-
-
-        //            foreach (var rowBits in ___rows.Values)
-        //            {
-        //                Debug.Log("[Group Resources]: position: (" + rowBits.gameObject.rectTransform().position.x + "," + rowBits.gameObject.rectTransform().position.y + ") " + rowBits.gameObject.ToString());
-        //                Debug.Log("[Group Resources]: anchor: (" + rowBits.gameObject.rectTransform().anchoredPosition.x + "," + rowBits.gameObject.rectTransform().anchoredPosition.y + ")");
-        //                Debug.Log("[Group Resources]: pivot: (" + rowBits.gameObject.rectTransform().pivot.x + "," + rowBits.gameObject.rectTransform().pivot.y + ")");
-        //                Debug.Log("[Group Resources]: anchormax: (" + rowBits.gameObject.rectTransform().anchorMax.x + "," + rowBits.gameObject.rectTransform().anchorMax.y + ")");
-        //                Debug.Log("[Group Resources]: anchormin: (" + rowBits.gameObject.rectTransform().anchorMin.x + "," + rowBits.gameObject.rectTransform().anchorMin.y + ")");
-        //            }
-        //        }
-        //    }
-
-        //    private static void PrintDetails(GameObject target, int level)
-        //    {
-        //        Debug.Log("Level: " + level + ", " + target.name);
-        //        Debug.Log("[Group Resources]: position: (" + target.rectTransform().position.x + "," + target.rectTransform().position.y + ")" );
-        //        Debug.Log("[Group Resources]: anchor: (" + target.rectTransform().anchoredPosition.x + "," + target.rectTransform().anchoredPosition.y + ")");
-        //        Debug.Log("[Group Resources]: pivot: (" + target.rectTransform().pivot.x + "," + target.rectTransform().pivot.y + ")");
-        //        Debug.Log("[Group Resources]: anchormax: (" + target.rectTransform().anchorMax.x + "," + target.rectTransform().anchorMax.y + ")");
-        //        Debug.Log("[Group Resources]: anchormin: (" + target.rectTransform().anchorMin.x + "," + target.rectTransform().anchorMin.y + ")");
-
-        //        for (int index = 0;  index < target.transform.childCount; index++)
-        //        {
-        //            PrintDetails(target.transform.GetChild(index).gameObject, level+1);
-        //        }
-        //    }
-        //}
     }
 }
