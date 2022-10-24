@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Resources;
 using System.Runtime.CompilerServices;
+using Unity.Profiling.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -104,10 +105,10 @@ namespace GroupResources
         [HarmonyPatch("SortRows")]
         public class PinnedResourcesPanel_SortRows_Patch
         {
-            private static Color lightBlue = new Color(0.013f, 0.78f, 1.0f);
+            private static readonly Color lightBlue = new Color(0.013f, 0.78f, 1.0f);
 
             /// <summary>
-            /// Sort the pinned resources list by category, name.
+            /// Sort the pinned resources list by category, name. Hide/unhide based on category collapse.
             /// </summary>
             /// <param name="__instance">this</param>
             /// <param name="___rows">set of pinned tags and gameobjects</param>
@@ -126,6 +127,10 @@ namespace GroupResources
                     }
                 }
 
+                WorldInventory worldInventory = ClusterManager.Instance.GetWorld(ClusterManager.Instance.activeWorldId).worldInventory;
+
+
+                // "pinnedResourceRowList" actually includes items marked "new" as well, btw.
                 List<PinnedResourcesPanel.PinnedResourceRow> pinnedResourceRowList = new List<PinnedResourcesPanel.PinnedResourceRow>();
                 foreach (KeyValuePair<Tag, PinnedResourcesPanel.PinnedResourceRow> row in ___rows)
                     pinnedResourceRowList.Add(row.Value);
@@ -141,48 +146,100 @@ namespace GroupResources
                 Tag category = null;
 
                 Color categoryColor = lightBlue;
+                bool categoryCollapsed = false;
 
+
+                // hide all of the material headers by default, we'll enable them based on what items are pinned/new later.
                 foreach (Tag clearCategory in PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Keys)
                 {
                     PinnedResourcesPanel_CreateRow_Patch.materialHeaders[clearCategory].SetActive(false);
                 }
 
+                // Sort all of the material headers and rows.
                 foreach (var item in pinnedResourceRowList)
                 {
-                    if (___rows[item.Tag].gameObject.activeSelf) // rows don't get removed between spaced out views, so skip changing the color of inactive ones.
+                    Tag itemCategoryTag = PickupableToCategoryCache[item.Tag];
+
+
+                    if (itemCategoryTag != category)
                     {
-                        if (PickupableToCategoryCache[item.Tag] != category)
+                        category = PickupableToCategoryCache[item.Tag];
+
+                        // headers might not have been added yet, since they get deferred.
+                        if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders.ContainsKey(itemCategoryTag))
                         {
-                            if (PickupableToCategoryCache[item.Tag] != category)
-                            {
-                                category = PickupableToCategoryCache[item.Tag];
+                            PinnedResourcesPanel_CreateRow_Patch.materialHeaders[itemCategoryTag].transform.SetAsLastSibling();
+                        }
 
-                                // since creation of the category headers is deferred, this might not contain a key yet.
-                                if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders.ContainsKey(category))
-                                {
-                                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].SetActive(true);
-                                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].transform.SetAsLastSibling();
-                                }
-                            }
+                    }
+                    ___rows[item.Tag].gameObject.transform.SetAsLastSibling();
+                }
 
-                            if (categoryColor == lightBlue)
+                // Set visibility on material headers and rows based on the current world and the 
+                // state of the material header (collapsed/expanded)
+                category = null;
+
+                foreach (var item in pinnedResourceRowList)
+                {
+                    Tag itemCategoryTag = PickupableToCategoryCache[item.Tag];
+
+                    bool showRowOnThisWorld = worldInventory.pinnedResources.Contains(item.Tag) ||
+                        worldInventory.notifyResources.Contains(item.Tag) ||
+                        (DiscoveredResources.Instance.newDiscoveries.ContainsKey(item.Tag) && ((double)worldInventory.GetAmount(item.Tag, false) > 0.0));
+
+                    // If it's in the pinned, notify(?) or new list, and we haven't looked at this category yet.
+                    if (showRowOnThisWorld && itemCategoryTag != category)
+                    {
+                        category = itemCategoryTag;
+
+                        if (categoryColor == lightBlue)
+                        {
+                            categoryColor = Color.white;
+                            categoryCollapsed = false; // since this is a new category, reset the collapsed state
+                        }
+                        else
+                        {
+                            categoryColor = lightBlue;
+                            categoryCollapsed = false; // since this is a new category, reset the collapsed state
+                        }
+
+                        // Since creation of the category headers is deferred, this might not contain a key yet.
+                        if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders.ContainsKey(itemCategoryTag))
+                        {
+                            // show headers for things we might show (showRowOnThisWorld), and work out if we need to collapse items.
+                            PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].SetActive(true);
+                            var headerButton = PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].transform.Find("Header").GetComponent<MultiToggle>();
+                            if (headerButton.CurrentState == 0)
                             {
-                                categoryColor = Color.white;
-                            }
-                            else
-                            {
-                                categoryColor = lightBlue;
+                                categoryCollapsed = true;
                             }
                         }
                     }
-                    ___rows[item.Tag].gameObject.transform.SetAsLastSibling();
 
-                    var categoryBG = ___rows[item.Tag].gameObject.transform.Find("BG/CategoryBG").gameObject;
-                    var img = categoryBG.GetComponent<Image>();
 
-                    img.color = categoryColor;
-                    img.SetAlpha(0.5f);
+                    // show rows if it's pinned/new and in an expanded category, set the background color.
+                    if (showRowOnThisWorld) 
+                    {
+                        if (categoryCollapsed == true)
+                        {
+                            ___rows[item.Tag].gameObject.SetActive(false);
+                        }
+                        else
+                        {
+                            
+                            ___rows[item.Tag].gameObject.SetActive(true);
+                        }
 
+                        var categoryBG = ___rows[item.Tag].gameObject.transform.Find("BG/CategoryBG").gameObject;
+                        var img = categoryBG.GetComponent<Image>();
+
+                        img.color = categoryColor;
+                        img.SetAlpha(0.5f);
+                    }
+                    else
+                    {
+                        ___rows[item.Tag].gameObject.SetActive(false);
+                    }
                 }
 
                 ___clearNewButton.transform.SetAsLastSibling();
@@ -216,7 +273,7 @@ namespace GroupResources
 
                 var category = PickupableToCategoryCache[tag];
 
-                // The parent to this should be the EntryContainer, parent to that is the Resource header.
+                // The parent to row we've just created should be the EntryContainer, parent to that is the Resource header.
                 if (!resourcesHeader)
                 {
                     resourcesHeader = __result.gameObject.transform.parent.parent.Find("HeaderLayout").gameObject;
@@ -224,13 +281,9 @@ namespace GroupResources
 
                 if (!materialHeaders.ContainsKey(category))
                 {
-                    Debug.Log("[GroupResources]: Adding category " + category.ProperNameStripLink());
                     // defer creation until later, since copying the header now causes issues.
-
                     __instance.StartCoroutine(MakeHeaders(category));
                 }
-
-                //GameScheduler.Instance.Schedule("DumpHeaderObjects", 5.0f, Utility.DumpDetails, (object)___rows);
 
                 // Tack on an extra BG, so we can shade that.
                 var bg = __result.gameObject.transform.Find("BG").gameObject;
@@ -247,18 +300,39 @@ namespace GroupResources
                         var categoryHeader = Util.KInstantiateUI(resourcesHeader, __instance.rowContainer, true);
                         categoryHeader.name = coCategory.ProperNameStripLink();
 
+                        // For some reason, the rows pivot off of the end, not the middle.
+                        // And all ONI ui objects seem to come out with a scaling of 0.9 for no discernable reason.
                         categoryHeader.rectTransform().localScale = new Vector3(1.0f, 1.0f);
-
                         categoryHeader.GetComponentInChildren<LocText>().SetText(coCategory.ProperNameStripLink()); // TODO translation?
-
                         categoryHeader.rectTransform().pivot = new Vector2(1.0f, 1.0f);
+
+                        // remove the "clear all" button, it won't do anything useful here.
+                        var clbutton = categoryHeader.transform.Find("ClearAllButton");
+                        if(clbutton != null)
+                        {
+                            clbutton.SetParent(null, false);
+                        }
+
+                        // Add the click handler, and set the default state to collapsed.
+                        var headerButton = categoryHeader.transform.Find("Header");
+
+                        MultiToggle headerToggle = headerButton.GetComponent<MultiToggle>();
+                        headerToggle.ChangeState(0); // TODO: save/reload this state.
+                        headerToggle.onClick = () =>
+                        {
+                            headerToggle.ChangeState((headerToggle.CurrentState+1)%2);
+
+                            // Kick off a row sort to hide the collapsed state
+                            PinnedResourcesPanel_SortRows_Patch.Prefix(__instance, ___rows, ___clearNewButton, ___seeAllButton);
+                        };
 
                         // TODO adjust internal bits here
                         materialHeaders.Add(coCategory, categoryHeader);
-                        //Debug.Log("[GroupResources]: Coroutine: added header " + coCategory.ProperNameStripLink() + ", headers total: " + materialHeaders.Count);
                     }
 
-                    // For some reason, using a reverse patch of SortRows wasn't executing. No idea why. We'll just call it directly.
+                    // For some reason, using a reverse patch of SortRows wasn't executing. No idea why, possibly because we patched it already.
+                    // We'll just call it directly.
+                    
                     PinnedResourcesPanel_SortRows_Patch.Prefix(__instance, ___rows, ___clearNewButton, ___seeAllButton);
                     ___rowContainerLayout.ForceUpdate();
                     yield return null;

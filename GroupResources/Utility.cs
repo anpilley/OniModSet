@@ -33,14 +33,6 @@ namespace GroupResources
 
 
                 }
-                //foreach (var rowBits in rows.Values)
-                //{
-                //    Debug.Log("[Group Resources]: position: (" + rowBits.gameObject.rectTransform().position.x + "," + rowBits.gameObject.rectTransform().position.y + ") " + rowBits.gameObject.ToString());
-                //    Debug.Log("[Group Resources]: anchor: (" + rowBits.gameObject.rectTransform().anchoredPosition.x + "," + rowBits.gameObject.rectTransform().anchoredPosition.y + ")");
-                //    Debug.Log("[Group Resources]: pivot: (" + rowBits.gameObject.rectTransform().pivot.x + "," + rowBits.gameObject.rectTransform().pivot.y + ")");
-                //    Debug.Log("[Group Resources]: anchormax: (" + rowBits.gameObject.rectTransform().anchorMax.x + "," + rowBits.gameObject.rectTransform().anchorMax.y + ")");
-                //    Debug.Log("[Group Resources]: anchormin: (" + rowBits.gameObject.rectTransform().anchorMin.x + "," + rowBits.gameObject.rectTransform().anchorMin.y + ")");
-                //}
             }
         }
 
@@ -68,7 +60,7 @@ namespace GroupResources
             Debug.Log("[Group Resources]: anchormax: (" + target.rectTransform().anchorMax.x + "," + target.rectTransform().anchorMax.y + ")");
             Debug.Log("[Group Resources]: anchormin: (" + target.rectTransform().anchorMin.x + "," + target.rectTransform().anchorMin.y + ")");
 
-            foreach(object component in target.GetComponents(typeof(object)))
+            foreach (object component in target.GetComponents(typeof(object)))
             {
                 Debug.Log("[Group Resources]: Components: " + component.GetType().Name);
             }
