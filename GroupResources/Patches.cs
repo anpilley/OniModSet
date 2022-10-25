@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using static STRINGS.CREATURES.STATUSITEMS;
 
 namespace GroupResources
 {
@@ -400,6 +401,7 @@ namespace GroupResources
 
                             // Kick off a row sort to hide the collapsed state
                             PinnedResourcesPanel_SortRows_Patch.Prefix(__instance, ___rows, ___clearNewButton, ___seeAllButton);
+                            __instance.Refresh();
                         };
 
                         // TODO adjust internal bits here
