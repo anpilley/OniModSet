@@ -93,6 +93,20 @@ namespace GroupResources
             Debug.LogError("[GroupResources]: Couldn't find a category for Tag: " + rowTag.ProperName());
         }
 
+        /// <summary>
+        /// Clean up some static resources when reloading a save.
+        /// </summary>
+        private static void Cleanup()
+        {
+            if (!PinnedResourcesPanel_CreateRow_Patch.resourcesHeader)
+                PinnedResourcesPanel_CreateRow_Patch.resourcesHeader = null;
+            if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders != null && PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Count > 0)
+            {
+                PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Clear();
+            }
+        }
+
+
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("OnPrefabInit")]
         public class PinnedResourcesPanel_OnPrefabInit_Patch
@@ -102,15 +116,22 @@ namespace GroupResources
             /// </summary>
             public static void Prefix()
             {
-                if (!PinnedResourcesPanel_CreateRow_Patch.resourcesHeader)
-                    PinnedResourcesPanel_CreateRow_Patch.resourcesHeader = null;
-                if(PinnedResourcesPanel_CreateRow_Patch.materialHeaders != null && PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Count > 0)
-                {
-                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Clear();
-                }
-            }
+                Cleanup();
+            }   
         }
 
+        [HarmonyPatch(typeof(Game))]
+        [HarmonyPatch("DestroyInstances")]
+        public class Game_DestroyInstances_Patch
+        {
+            /// <summary>
+            /// Runs some quick cleanup routines when going to the main menu.
+            /// </summary>
+            public static void Postfix()
+            {
+                Cleanup();
+            }
+        }
 
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("SortRows")]
@@ -146,13 +167,14 @@ namespace GroupResources
                 foreach (KeyValuePair<Tag, PinnedResourcesPanel.PinnedResourceRow> row in ___rows)
                     pinnedResourceRowList.Add(row.Value);
 
+                // sort alphabetically, group by category.
                 pinnedResourceRowList.Sort((Comparison<PinnedResourcesPanel.PinnedResourceRow>)((a, b) =>
                 {
                     if (PickupableToCategoryCache[a.Tag] == PickupableToCategoryCache[b.Tag])
                         return a.SortableNameWithoutLink.CompareTo(b.SortableNameWithoutLink);
 
                     return PickupableToCategoryCache[a.Tag].ProperNameStripLink().CompareTo(PickupableToCategoryCache[b.Tag].ProperNameStripLink());
-                }));  // sort alphabetically, group by category.
+                }));  
 
                 Tag category = null;
 
@@ -177,7 +199,6 @@ namespace GroupResources
                 foreach (var item in pinnedResourceRowList)
                 {
                     Tag itemCategoryTag = PickupableToCategoryCache[item.Tag];
-
 
                     if (itemCategoryTag != category)
                     {
@@ -227,8 +248,6 @@ namespace GroupResources
                             // show headers for things we might show (showRowOnThisWorld), and work out if we need to collapse items.
                             try
                             {
-
-
                                 PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].SetActive(true);
                                 var headerButton = PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].transform.Find("Header").GetComponent<MultiToggle>();
                                 if (headerButton.CurrentState == 0)
@@ -249,21 +268,18 @@ namespace GroupResources
                     {
                         try
                         {
-
                             if (categoryCollapsed == true)
                             {
                                 ___rows[item.Tag].gameObject.SetActive(false);
                             }
                             else
                             {
-
                                 ___rows[item.Tag].gameObject.SetActive(true);
                             }
                         }
                         catch (NullReferenceException)
                         {
                             Debug.LogError("[GroupResources]: Null Reference showing/hiding row items from header state");
-
                         }
 
                         var categoryBG = ___rows[item.Tag].gameObject.transform.Find("BG/CategoryBG").gameObject;
