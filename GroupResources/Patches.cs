@@ -102,6 +102,25 @@ namespace GroupResources
         }
 
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
+        [HarmonyPatch("OnPrefabInit")]
+        public class PinnedResourcesPanel_OnPrefabInit_Patch
+        {
+            /// <summary>
+            /// Runs some quick cleanup routines under the assumption that we might be reloading a save from main menu.
+            /// </summary>
+            public static void Prefix()
+            {
+                if (!PinnedResourcesPanel_CreateRow_Patch.resourcesHeader)
+                    PinnedResourcesPanel_CreateRow_Patch.resourcesHeader = null;
+                if(PinnedResourcesPanel_CreateRow_Patch.materialHeaders != null && PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Count > 0)
+                {
+                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Clear();
+                }
+            }
+        }
+
+
+        [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("SortRows")]
         public class PinnedResourcesPanel_SortRows_Patch
         {
@@ -152,7 +171,14 @@ namespace GroupResources
                 // hide all of the material headers by default, we'll enable them based on what items are pinned/new later.
                 foreach (Tag clearCategory in PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Keys)
                 {
-                    PinnedResourcesPanel_CreateRow_Patch.materialHeaders[clearCategory].SetActive(false);
+                    try
+                    {
+                        PinnedResourcesPanel_CreateRow_Patch.materialHeaders[clearCategory].SetActive(false);
+                    }
+                    catch(NullReferenceException)
+                    {
+                        Debug.LogError("[GroupResources]: Null Reference hiding material headers");
+                    }
                 }
 
                 // Sort all of the material headers and rows.
@@ -207,11 +233,20 @@ namespace GroupResources
                         if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders.ContainsKey(itemCategoryTag))
                         {
                             // show headers for things we might show (showRowOnThisWorld), and work out if we need to collapse items.
-                            PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].SetActive(true);
-                            var headerButton = PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].transform.Find("Header").GetComponent<MultiToggle>();
-                            if (headerButton.CurrentState == 0)
+                            try
                             {
-                                categoryCollapsed = true;
+
+
+                                PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].SetActive(true);
+                                var headerButton = PinnedResourcesPanel_CreateRow_Patch.materialHeaders[category].transform.Find("Header").GetComponent<MultiToggle>();
+                                if (headerButton.CurrentState == 0)
+                                {
+                                    categoryCollapsed = true;
+                                }
+                            }
+                            catch(NullReferenceException)
+                            {
+                                Debug.LogError("[GroupResources]: Null Reference showing material headers");
                             }
                         }
                     }
@@ -220,14 +255,23 @@ namespace GroupResources
                     // show rows if it's pinned/new and in an expanded category, set the background color.
                     if (showRowOnThisWorld) 
                     {
-                        if (categoryCollapsed == true)
+                        try
                         {
-                            ___rows[item.Tag].gameObject.SetActive(false);
+
+                            if (categoryCollapsed == true)
+                            {
+                                ___rows[item.Tag].gameObject.SetActive(false);
+                            }
+                            else
+                            {
+
+                                ___rows[item.Tag].gameObject.SetActive(true);
+                            }
                         }
-                        else
+                        catch (NullReferenceException)
                         {
-                            
-                            ___rows[item.Tag].gameObject.SetActive(true);
+                            Debug.LogError("[GroupResources]: Null Reference showing/hiding row items from header state");
+
                         }
 
                         var categoryBG = ___rows[item.Tag].gameObject.transform.Find("BG/CategoryBG").gameObject;
@@ -238,7 +282,14 @@ namespace GroupResources
                     }
                     else
                     {
-                        ___rows[item.Tag].gameObject.SetActive(false);
+                        try
+                        {
+                            ___rows[item.Tag].gameObject.SetActive(false);
+                        }
+                        catch (NullReferenceException)
+                        {
+                            Debug.LogError("[GroupResources]: Null Reference hiding row items from world state");
+                        }
                     }
                 }
 
@@ -249,15 +300,30 @@ namespace GroupResources
             }
         }
 
-        /// <summary>
-        /// Create Row adds a background to each resource entry, and adds new categories as new ones show up.
-        /// </summary>
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("CreateRow")]
         public class PinnedResourcesPanel_CreateRow_Patch 
         {
+            /// <summary>
+            /// Cache of the original resources header we dupe.
+            /// </summary>
             public static GameObject resourcesHeader = null;
+
+            /// <summary>
+            /// All of the resource headers we've added, by tag.
+            /// </summary>
             public static Dictionary<Tag, GameObject> materialHeaders = new Dictionary<Tag, GameObject>();
+
+            /// <summary>
+            /// Create Row adds a background to each resource entry, and adds new category headers as new ones show up.
+            /// </summary>
+            /// <param name="__instance">"this"</param>
+            /// <param name="tag">The tag of a resource being added</param>
+            /// <param name="__result">The return result from the original CreateRow</param>
+            /// <param name="___rowContainerLayout">The QuickLayout, since we need to force a layout.</param>
+            /// <param name="___rows"></param>
+            /// <param name="___clearNewButton"></param>
+            /// <param name="___seeAllButton"></param>
             public static void Postfix(PinnedResourcesPanel __instance, Tag tag, 
                 ref PinnedResourcesPanel.PinnedResourceRow __result, 
                 QuickLayout ___rowContainerLayout, 
@@ -285,15 +351,17 @@ namespace GroupResources
                     __instance.StartCoroutine(MakeHeaders(category));
                 }
 
-                // Tack on an extra BG, so we can shade that.
+                // Tack on an extra BG to regular resource entries, so we can shade that.
                 var bg = __result.gameObject.transform.Find("BG").gameObject;
                 var additiveBG = Util.KInstantiate(bg, bg, "CategoryBG");
                 additiveBG.rectTransform().localScale = new Vector3(1.0f, 1.0f);
                 additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Left, 0.0f, bg.rectTransform().rect.width);
                 additiveBG.rectTransform().SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 0.0f, bg.rectTransform().rect.height);
 
+                // Coroutine to add a material header item, deferred by one frame.
                 IEnumerator MakeHeaders(Tag coCategory)
                 {
+                    // wait a frame or so.
                     yield return null;
                     if (!materialHeaders.ContainsKey(coCategory))
                     {
@@ -301,7 +369,7 @@ namespace GroupResources
                         categoryHeader.name = coCategory.ProperNameStripLink();
 
                         // For some reason, the rows pivot off of the end, not the middle.
-                        // And all ONI ui objects seem to come out with a scaling of 0.9 for no discernable reason.
+                        // And all ONI UI objects seem to come out with a scaling of 0.9 for no discernable reason.
                         categoryHeader.rectTransform().localScale = new Vector3(1.0f, 1.0f);
                         categoryHeader.GetComponentInChildren<LocText>().SetText(coCategory.ProperNameStripLink()); // TODO translation?
                         categoryHeader.rectTransform().pivot = new Vector2(1.0f, 1.0f);
@@ -331,9 +399,10 @@ namespace GroupResources
                     }
 
                     // For some reason, using a reverse patch of SortRows wasn't executing. No idea why, possibly because we patched it already.
-                    // We'll just call it directly.
-                    
+                    // We'll just call it directly, since ours completely overwrites theirs.
                     PinnedResourcesPanel_SortRows_Patch.Prefix(__instance, ___rows, ___clearNewButton, ___seeAllButton);
+
+                    // if we don't force an update here, the header shows up in the wrong position for quite some time after the header is drawn
                     ___rowContainerLayout.ForceUpdate();
                     yield return null;
                 }
