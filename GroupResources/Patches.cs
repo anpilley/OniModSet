@@ -1,17 +1,9 @@
 ﻿using HarmonyLib;
-using rail;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Resources;
-using System.Runtime.CompilerServices;
-using Unity.Profiling.LowLevel.Unsafe;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using static PinnedResourcesPanel;
-using static STRINGS.DUPLICANTS.PERSONALITIES;
 
 namespace GroupResources
 {
