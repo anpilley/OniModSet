@@ -119,9 +119,8 @@ namespace GroupResources
             if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders != null && PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Count > 0)
             {
                 PinnedResourcesPanel_CreateRow_Patch.materialHeaders.Clear();
-            }
+            }  
         }
-
 
         [HarmonyPatch(typeof(PinnedResourcesPanel))]
         [HarmonyPatch("OnPrefabInit")]
@@ -133,7 +132,22 @@ namespace GroupResources
             public static void Prefix()
             {
                 Cleanup();
-            }   
+            }
+        }
+
+        
+        [HarmonyPatch(typeof(SaveGame))]
+        [HarmonyPatch("OnPrefabInit")]
+        public class SaveGame_OnPrefabInit_Patch
+        {
+            /// <summary>
+            /// Attach a component to save/reload collapse/expanded state.
+            /// </summary>
+            /// <param name="__instance">"this"</param>
+            public static void Postfix(SaveGame __instance)
+            {
+                PinnedResourcesPanel_CreateRow_Patch.headerState = __instance.gameObject.AddOrGet<ResourceHeaderState>();
+            }
         }
 
         [HarmonyPatch(typeof(Game))]
@@ -175,7 +189,9 @@ namespace GroupResources
                     }
                 }
 
-                WorldInventory worldInventory = ClusterManager.Instance.GetWorld(ClusterManager.Instance.activeWorldId).worldInventory;
+                int currWorldId = ClusterManager.Instance.activeWorldId;
+
+                WorldInventory worldInventory = ClusterManager.Instance.GetWorld(currWorldId).worldInventory;
 
 
                 // "pinnedResourceRowList" actually includes items marked "new" as well, btw.
@@ -224,6 +240,21 @@ namespace GroupResources
                         if (PinnedResourcesPanel_CreateRow_Patch.materialHeaders.ContainsKey(itemCategoryTag))
                         {
                             PinnedResourcesPanel_CreateRow_Patch.materialHeaders[itemCategoryTag].transform.SetAsLastSibling();
+                            if(PinnedResourcesPanel_CreateRow_Patch.headerState != null)
+                            {
+                                var headerTag = new ResourceHeaderState.AsteroidTagKey(currWorldId, itemCategoryTag.ProperNameStripLink());
+                                var headerButton = PinnedResourcesPanel_CreateRow_Patch.materialHeaders[itemCategoryTag].transform.Find("Header").GetComponent<MultiToggle>();
+                                if (PinnedResourcesPanel_CreateRow_Patch.headerState.HeaderState.ContainsKey(headerTag))
+                                {
+
+                                    headerButton.ChangeState(PinnedResourcesPanel_CreateRow_Patch.headerState.HeaderState[headerTag]);
+                                }
+                                else
+                                {
+                                    PinnedResourcesPanel_CreateRow_Patch.headerState.HeaderState.Add(headerTag, 0);
+                                    headerButton.ChangeState(0);
+                                }
+                            }
                         }
 
                     }
@@ -338,6 +369,8 @@ namespace GroupResources
             /// </summary>
             public static Dictionary<Tag, GameObject> materialHeaders = new Dictionary<Tag, GameObject>();
 
+            public static ResourceHeaderState headerState = null;
+
             /// <summary>
             /// Create Row adds a background to each resource entry, and adds new category headers as new ones show up.
             /// </summary>
@@ -360,6 +393,11 @@ namespace GroupResources
                     // Add it if it's not already there.
                     AddCategoryToCache(tag);
                 }
+                
+                if(headerState == null)
+                {
+                    Debug.LogError("[Group Resources]: headerState uninitialized?");
+                }
 
                 var category = PickupableToCategoryCache[tag];
 
@@ -370,6 +408,7 @@ namespace GroupResources
                 }
 
                 if (!materialHeaders.ContainsKey(category))
+
                 {
                     // defer creation until later, since copying the header now causes issues.
                     if(__instance.gameObject.activeInHierarchy)
@@ -410,10 +449,40 @@ namespace GroupResources
                         var headerButton = categoryHeader.transform.Find("Header");
 
                         MultiToggle headerToggle = headerButton.GetComponent<MultiToggle>();
-                        headerToggle.ChangeState(0); // TODO: save/reload this state.
+                        if (headerState != null && headerState.HeaderState != null)
+                        {
+                            var targetKey = new ResourceHeaderState.AsteroidTagKey(ClusterManager.Instance.activeWorldId, coCategory.ProperNameStripLink());
+
+                            if (headerState.HeaderState.ContainsKey(targetKey))
+                            {
+                                headerToggle.ChangeState(headerState.HeaderState[targetKey], true);
+                            }
+                            else
+                            {
+                                headerToggle.ChangeState(0);
+                            }
+                        }
+
                         headerToggle.onClick = () =>
                         {
-                            headerToggle.ChangeState((headerToggle.CurrentState+1)%2);
+                            int worldId = ClusterManager.Instance.activeWorldId;
+                            int newState = (headerToggle.CurrentState + 1) % 2;
+                            headerToggle.ChangeState(newState);
+
+                            if (headerState != null && headerState.HeaderState != null)
+                            {
+                                var targetKey = new ResourceHeaderState.AsteroidTagKey(worldId, coCategory.ProperNameStripLink());
+
+                                if (headerState.HeaderState.ContainsKey(targetKey))
+                                {
+                                    headerState.HeaderState[targetKey] = newState;
+                                }
+                                else
+                                {
+                                    headerState.HeaderState.Add(targetKey, newState);
+                                }
+                            }
+
 
                             // Kick off a row sort to hide the collapsed state
                             PinnedResourcesPanel_SortRows_Patch.Prefix(__instance, ___rows, ___clearNewButton, ___seeAllButton);
