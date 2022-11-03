@@ -21,15 +21,13 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
+using PeterHan.PLib.Options;
 using static GroupResources.Patches;
 
 namespace GroupResources
 {
     public class CategoryManager : KMonoBehaviour
     {
-
-        private static readonly Color lightBlue = new Color(0.013f, 0.78f, 1.0f);
-
         private GameObject resourcesHeader = null;
         public Dictionary<Tag, GameObject> materialHeaders;
 
@@ -185,7 +183,7 @@ namespace GroupResources
 
             Tag category = null;
 
-            Color categoryColor = lightBlue;
+            Color categoryColor = GroupResourceSettings.Instance.DarkColor;
             bool categoryCollapsed = false;
 
 
@@ -253,14 +251,14 @@ namespace GroupResources
                 {
                     category = itemCategoryTag;
 
-                    if (categoryColor == lightBlue)
+                    if (categoryColor == GroupResourceSettings.Instance.DarkColor)
                     {
-                        categoryColor = Color.white;
+                        categoryColor = GroupResourceSettings.Instance.LightColor;
                         categoryCollapsed = false; // since this is a new category, reset the collapsed state
                     }
                     else
                     {
-                        categoryColor = lightBlue;
+                        categoryColor = GroupResourceSettings.Instance.DarkColor;
                         categoryCollapsed = false; // since this is a new category, reset the collapsed state
                     }
 
@@ -308,7 +306,7 @@ namespace GroupResources
                     var img = categoryBG.GetComponent<Image>();
 
                     img.color = categoryColor;
-                    img.SetAlpha(0.5f);
+                    img.SetAlpha(GroupResourceSettings.Instance.Alpha);
                 }
                 else
                 {
@@ -329,6 +327,13 @@ namespace GroupResources
             return false;
         }
 
+        /// <summary>
+        /// Create a background for new category rows, and a category header.
+        /// </summary>
+        /// <param name="result">the newly created row.</param>
+        /// <param name="itemTag"></param>
+        /// <param name="rowContainerLayout"></param>
+        /// <param name="rows"></param>
         public void CreateCategoryRow(
             ref PinnedResourcesPanel.PinnedResourceRow result,
             Tag itemTag,
@@ -357,7 +362,7 @@ namespace GroupResources
                 resourcesHeader = result.gameObject.transform.parent.parent.Find("HeaderLayout").gameObject;
             }
 
-            if (!materialHeaders.ContainsKey(category))
+            if (!materialHeaders.ContainsKey(category) && GroupResourceSettings.Instance.CategoryHeaders)
 
             {
                 // defer creation until later, since copying the header now causes issues.

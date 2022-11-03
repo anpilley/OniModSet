@@ -14,6 +14,8 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using HarmonyLib;
+using PeterHan.PLib.Core;
+using PeterHan.PLib.Options;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -30,7 +32,11 @@ namespace GroupResources
             public override void OnLoad(Harmony harmony)
             {
                 Debug.Log("Grouped Resources Gooooooo!");
+
                 harmony.PatchAll();
+
+                PUtil.InitLibrary();
+                new POptions().RegisterOptions(this, typeof(GroupResourceSettings));
             }
         }
 
