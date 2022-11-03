@@ -30,6 +30,7 @@ namespace GroupResources
     {
         private GameObject resourcesHeader = null;
         public Dictionary<Tag, GameObject> materialHeaders;
+        public GroupResourceSettings settings = null;
 
         public CategoryManager()
         {
@@ -117,8 +118,10 @@ namespace GroupResources
         /// <summary>
         /// Initialize/cleanup between save/load. Get the SaveGame object to retrieve save data.
         /// </summary>
-        public void Init()
+        public void Init(GroupResourceSettings settings)
         {
+            this.settings = settings;
+
             if (!resourcesHeader)
                 resourcesHeader = null;
 
@@ -183,7 +186,7 @@ namespace GroupResources
 
             Tag category = null;
 
-            Color categoryColor = GroupResourceSettings.Instance.DarkColor;
+            Color categoryColor = settings.DarkColor;
             bool categoryCollapsed = false;
 
 
@@ -251,14 +254,14 @@ namespace GroupResources
                 {
                     category = itemCategoryTag;
 
-                    if (categoryColor == GroupResourceSettings.Instance.DarkColor)
+                    if (categoryColor == settings.DarkColor)
                     {
-                        categoryColor = GroupResourceSettings.Instance.LightColor;
+                        categoryColor = settings.LightColor;
                         categoryCollapsed = false; // since this is a new category, reset the collapsed state
                     }
                     else
                     {
-                        categoryColor = GroupResourceSettings.Instance.DarkColor;
+                        categoryColor = settings.DarkColor;
                         categoryCollapsed = false; // since this is a new category, reset the collapsed state
                     }
 
@@ -306,7 +309,7 @@ namespace GroupResources
                     var img = categoryBG.GetComponent<Image>();
 
                     img.color = categoryColor;
-                    img.SetAlpha(GroupResourceSettings.Instance.Alpha);
+                    img.SetAlpha(settings.Alpha);
                 }
                 else
                 {
@@ -362,7 +365,7 @@ namespace GroupResources
                 resourcesHeader = result.gameObject.transform.parent.parent.Find("HeaderLayout").gameObject;
             }
 
-            if (!materialHeaders.ContainsKey(category) && GroupResourceSettings.Instance.CategoryHeaders)
+            if (!materialHeaders.ContainsKey(category) && settings.CategoryHeaders)
 
             {
                 // defer creation until later, since copying the header now causes issues.

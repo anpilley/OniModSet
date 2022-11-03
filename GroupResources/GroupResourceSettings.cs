@@ -11,7 +11,7 @@ namespace GroupResources
 {
     [JsonObject(MemberSerialization.OptIn)]
     [ModInfo("https://github.com/anpilley/OniModSet")]
-    public class GroupResourceSettings : SingletonOptions<GroupResourceSettings>
+    public class GroupResourceSettings
     {
         [Option("Category Headers", "Enable/Disable creation of collapsible Category Headers. Pinned items will still be sorted by Category and have background shading.", "Category Headers")]
         [JsonProperty]

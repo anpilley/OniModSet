@@ -50,7 +50,8 @@ namespace GroupResources
             public static void Prefix(PinnedResourcesPanel __instance)
             {
                 var categoryManager = __instance.gameObject.AddOrGet<CategoryManager>();
-                categoryManager.Init();
+                var settings = POptions.ReadSettings<GroupResourceSettings>();
+                categoryManager.Init(settings);
             }
         }
 
