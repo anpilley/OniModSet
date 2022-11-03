@@ -1,0 +1,31 @@
+Test plan:
+
+Settings:
+* Change colors
+* set alpha
+* enable/disable category
+* save, main menu, change setting, load, check applied
+
+Category Headers
+* Expand category, save, reload
+* Expand category, switch asteroid. Switch back.
+* Switch asteroid, expand category, switch back.
+* Pin item in new category
+* Pin item in existing expanded category
+* Pin item in existing, collapsed, category.
+* Discover item in new category
+* discover item in collapsed category
+* discover item in expanded category
+
+* Start new game rapidly (regression test)
+
+
+* Test Vanilla
+
+Release procedure:
+* Check version number updated (csproj)
+* Check tested-build updated (Directory.Build.props)
+* Update thumbnail?
+* Update screenshots?
+* Use uploader
+* Update details.

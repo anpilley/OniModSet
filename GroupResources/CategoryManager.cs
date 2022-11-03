@@ -35,7 +35,7 @@ namespace GroupResources
         public CategoryManager()
         {
             PickupableToCategoryCache = new Dictionary<Tag, Tag>();
-            materialHeaders = new Dictionary<Tag, GameObject>();
+            
         }
 
         private ResourceHeaderState headerState;
@@ -130,6 +130,8 @@ namespace GroupResources
                 materialHeaders.Clear();
             }
 
+            materialHeaders = new Dictionary<Tag, GameObject>();
+
             List<GameObject> rootGOs = new List<GameObject>();
             this.gameObject.scene.GetRootGameObjects(rootGOs);
             foreach(var go in rootGOs)
@@ -184,7 +186,7 @@ namespace GroupResources
                 return PickupableToCategoryCache[a.Tag].ProperNameStripLink().CompareTo(PickupableToCategoryCache[b.Tag].ProperNameStripLink());
             }));
 
-            Tag category = null;
+            
 
             Color categoryColor = settings.DarkColor;
             bool categoryCollapsed = false;
@@ -204,6 +206,7 @@ namespace GroupResources
             }
 
             // Sort all of the material headers and rows.
+            Tag category = null;
             foreach (var item in pinnedResourceRowList)
             {
                 Tag itemCategoryTag = PickupableToCategoryCache[item.Tag];
@@ -212,7 +215,7 @@ namespace GroupResources
                 {
                     category = PickupableToCategoryCache[item.Tag];
 
-                    // headers might not have been added yet, since they get deferred.
+                    // headers might not have been added yet/at all, since they get deferred, or disabled.
                     if (materialHeaders.ContainsKey(itemCategoryTag))
                     {
                         materialHeaders[itemCategoryTag].transform.SetAsLastSibling();
@@ -265,7 +268,8 @@ namespace GroupResources
                         categoryCollapsed = false; // since this is a new category, reset the collapsed state
                     }
 
-                    // Since creation of the category headers is deferred, this might not contain a key yet.
+                    // Since creation of the category headers is deferred, this might not contain a key because it hasn't been 
+                    // created, or it's disabled.
                     if (materialHeaders.ContainsKey(itemCategoryTag))
                     {
                         // show headers for things we might show (showRowOnThisWorld), and work out if we need to collapse items.
