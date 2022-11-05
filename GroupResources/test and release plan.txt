@@ -30,6 +30,7 @@ Release procedure:
 * Check tested-build updated (Directory.Build.props)
 * Update thumbnail?
 * Update screenshots?
+* Update tag in github, release zip
 * Use uploader
 * Update details.
 
