@@ -16,11 +16,14 @@ Category Headers
 * Discover item in new category
 * discover item in collapsed category
 * discover item in expanded category
+* Start a save, open a few categories, Save it, switch to a different save, open different categories, save, switch back.
 
 * Start new game rapidly (regression test)
 
 
 * Test Vanilla
+
+* Test with Critter inventory.
 
 Release procedure:
 * Check version number updated (csproj)
@@ -29,3 +32,5 @@ Release procedure:
 * Update screenshots?
 * Use uploader
 * Update details.
+
+

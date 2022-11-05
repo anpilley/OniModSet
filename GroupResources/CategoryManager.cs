@@ -38,7 +38,29 @@ namespace GroupResources
             
         }
 
-        private ResourceHeaderState headerState;
+        private ResourceHeaderState privateHeaderState = null;
+        private ResourceHeaderState GetHeaderState()
+        {
+            if (privateHeaderState != null)
+                return privateHeaderState;
+
+            
+            var state = SaveGame.Instance.GetComponent<ResourceHeaderState>();
+            if (state == null)
+            {
+                Debug.LogError("[Group Resources]: Unable to find Header State");
+            }
+                    
+            
+            if (state == null)
+            {
+                Debug.LogError("[Group Resources]: Unable to find SaveGame object? This can happen if you skip through dupe creation too quickly. ");
+            }
+
+            privateHeaderState = state;
+
+            return state;
+        }
 
         /// <summary>
         /// cache of the pickupables to category tags, since the lookup is expensive.
@@ -120,7 +142,11 @@ namespace GroupResources
         /// </summary>
         public void Init(GroupResourceSettings settings)
         {
+            Debug.Log("[Group Resources]: Category Manager init");
             this.settings = settings;
+
+            if (!privateHeaderState)
+                privateHeaderState = null;
 
             if (!resourcesHeader)
                 resourcesHeader = null;
@@ -132,29 +158,17 @@ namespace GroupResources
 
             materialHeaders = new Dictionary<Tag, GameObject>();
 
-            List<GameObject> rootGOs = new List<GameObject>();
-            this.gameObject.scene.GetRootGameObjects(rootGOs);
-            foreach(var go in rootGOs)
-            {
-                if(go.name == "SaveGame")
-                {
-                    this.headerState = go.GetComponent<ResourceHeaderState>();
-                    if(this.headerState == null)
-                    {
-                        Debug.LogError("[Group Resources]: Unable to find Header State");
-                    }
-                    break;
-                }
-            }
-
-            if (this.headerState == null)
-            {
-                Debug.LogError("[Group Resources]: Unable to find SaveGame object?");
-            }
+            
         }
 
         public bool SortRows(Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> rows)
         {
+            if (settings == null)
+            {
+                Debug.Log("[Group Resources]: Settings isn't initialzied. Did the player rush their way through a new game too fast?");
+                return true;
+            }
+
             var resourcesPanelGO = this.gameObject.GetComponent<PinnedResourcesPanel>();
 
             foreach (Tag rowTag in rows.Keys)
@@ -171,7 +185,6 @@ namespace GroupResources
 
             WorldInventory worldInventory = ClusterManager.Instance.GetWorld(currWorldId).worldInventory;
 
-
             // "pinnedResourceRowList" actually includes items marked "new" as well, btw.
             List<PinnedResourcesPanel.PinnedResourceRow> pinnedResourceRowList = new List<PinnedResourcesPanel.PinnedResourceRow>();
             foreach (KeyValuePair<Tag, PinnedResourcesPanel.PinnedResourceRow> row in rows)
@@ -186,7 +199,6 @@ namespace GroupResources
                 return PickupableToCategoryCache[a.Tag].ProperNameStripLink().CompareTo(PickupableToCategoryCache[b.Tag].ProperNameStripLink());
             }));
 
-            
 
             Color categoryColor = settings.DarkColor;
             bool categoryCollapsed = false;
@@ -207,6 +219,7 @@ namespace GroupResources
 
             // Sort all of the material headers and rows.
             Tag category = null;
+
             foreach (var item in pinnedResourceRowList)
             {
                 Tag itemCategoryTag = PickupableToCategoryCache[item.Tag];
@@ -219,21 +232,20 @@ namespace GroupResources
                     if (materialHeaders.ContainsKey(itemCategoryTag))
                     {
                         materialHeaders[itemCategoryTag].transform.SetAsLastSibling();
-                        if (headerState != null)
+                    
+                        var headerTag = new ResourceHeaderState.AsteroidTagKey(currWorldId, itemCategoryTag.ProperNameStripLink());
+                        var headerButton = materialHeaders[itemCategoryTag].transform.Find("Header").GetComponent<MultiToggle>();
+                        if (GetHeaderState().HeaderState.ContainsKey(headerTag))
                         {
-                            var headerTag = new ResourceHeaderState.AsteroidTagKey(currWorldId, itemCategoryTag.ProperNameStripLink());
-                            var headerButton = materialHeaders[itemCategoryTag].transform.Find("Header").GetComponent<MultiToggle>();
-                            if (headerState.HeaderState.ContainsKey(headerTag))
-                            {
 
-                                headerButton.ChangeState(headerState.HeaderState[headerTag]);
-                            }
-                            else
-                            {
-                                headerState.HeaderState.Add(headerTag, 0);
-                                headerButton.ChangeState(0);
-                            }
+                            headerButton.ChangeState(GetHeaderState().HeaderState[headerTag]);
                         }
+                        else
+                        {
+                            GetHeaderState().HeaderState.Add(headerTag, 0);
+                            headerButton.ChangeState(0);
+                        }
+                        
                     }
 
                 }
@@ -347,6 +359,11 @@ namespace GroupResources
             QuickLayout rowContainerLayout,
             Dictionary<Tag, PinnedResourcesPanel.PinnedResourceRow> rows)
         {
+            if (settings == null)
+            {
+                Debug.Log("[Group Resources]: We're creating a row really early. Did the player rush through new game creation?");
+                return;
+            }
             var pinnedResourcesPanel = this.FindComponent<PinnedResourcesPanel>();
 
             // look up in existing tag->category lookup cache
@@ -354,11 +371,6 @@ namespace GroupResources
             {
                 // Add it if it's not already there.
                 AddCategoryToCache(itemTag);
-            }
-
-            if (headerState == null)
-            {
-                Debug.LogError("[Group Resources]: headerState uninitialized?");
             }
 
             var category = PickupableToCategoryCache[itemTag];
@@ -411,19 +423,18 @@ namespace GroupResources
                     var headerButton = categoryHeader.transform.Find("Header");
 
                     MultiToggle headerToggle = headerButton.GetComponent<MultiToggle>();
-                    if (headerState != null && headerState.HeaderState != null)
-                    {
-                        var targetKey = new ResourceHeaderState.AsteroidTagKey(ClusterManager.Instance.activeWorldId, coCategory.ProperNameStripLink());
+                    
+                    var targetKey = new ResourceHeaderState.AsteroidTagKey(ClusterManager.Instance.activeWorldId, coCategory.ProperNameStripLink());
 
-                        if (headerState.HeaderState.ContainsKey(targetKey))
-                        {
-                            headerToggle.ChangeState(headerState.HeaderState[targetKey], true);
-                        }
-                        else
-                        {
-                            headerToggle.ChangeState(0);
-                        }
+                    if (GetHeaderState().HeaderState.ContainsKey(targetKey))
+                    {
+                        headerToggle.ChangeState(GetHeaderState().HeaderState[targetKey], true);
                     }
+                    else
+                    {
+                        headerToggle.ChangeState(0);
+                    }
+                    
 
                     headerToggle.onClick = () =>
                     {
@@ -431,18 +442,16 @@ namespace GroupResources
                         int newState = (headerToggle.CurrentState + 1) % 2;
                         headerToggle.ChangeState(newState);
 
-                        if (headerState != null && headerState.HeaderState != null)
-                        {
-                            var targetKey = new ResourceHeaderState.AsteroidTagKey(worldId, coCategory.ProperNameStripLink());
+                        
+                        var clickedKey = new ResourceHeaderState.AsteroidTagKey(worldId, coCategory.ProperNameStripLink());
 
-                            if (headerState.HeaderState.ContainsKey(targetKey))
-                            {
-                                headerState.HeaderState[targetKey] = newState;
-                            }
-                            else
-                            {
-                                headerState.HeaderState.Add(targetKey, newState);
-                            }
+                        if (GetHeaderState().HeaderState.ContainsKey(clickedKey))
+                        {
+                            GetHeaderState().HeaderState[clickedKey] = newState;
+                        }
+                        else
+                        {
+                            GetHeaderState().HeaderState.Add(clickedKey, newState);
                         }
 
 

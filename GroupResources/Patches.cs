@@ -51,6 +51,8 @@ namespace GroupResources
             {
                 var categoryManager = __instance.gameObject.AddOrGet<CategoryManager>();
                 var settings = POptions.ReadSettings<GroupResourceSettings>();
+                if (settings == null)
+                    settings = new GroupResourceSettings();
                 categoryManager.Init(settings);
             }
         }
