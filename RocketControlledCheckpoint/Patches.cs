@@ -53,6 +53,19 @@ namespace RocketControlledCheckpoint
             }
         }
 
+        /// <summary>
+        /// Add an automation input port for the suit checkpoint.
+        /// </summary>
+        [HarmonyPatch(typeof(SuitMarkerConfig))]
+        [HarmonyPatch("CreateBuildingDef")]
+        public class SuitMarkerConfig_CreateBuildingDef_Patch
+        {
+            public static void Postfix(ref BuildingDef __result)
+            {
+                __result.LogicInputPorts = LogicOperationalController.CreateSingleInputPortList(new CellOffset(0, 0));
+            }
+        }
+
         #endregion
 
         #region // request crew side screen
