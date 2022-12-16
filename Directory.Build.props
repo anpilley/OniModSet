@@ -28,7 +28,7 @@
     <Authors>Andrew Pilley</Authors>
     <Copyright>Copyright ©Andrew Pilley 2022</Copyright>
     <TargetFramework>net471</TargetFramework>
-    <LastWorkingBuild>535560</LastWorkingBuild>
+    <LastWorkingBuild>535720</LastWorkingBuild>
     <DistributeMod>true</DistributeMod>
     <ArchivedVersionPath></ArchivedVersionPath>
     <UsePublicized>false</UsePublicized>
