@@ -50,8 +50,6 @@ namespace GroupResources
                 if (other == null)
                     return 1;
 
-                Debug.Log("[Group Resources]: Comparing {" + this.ToString() + "} to {" + other.ToString()+"}");
-
                 if (this.WorldId.CompareTo(other.WorldId) != 0)
                     return this.WorldId.CompareTo(other.WorldId);
                 return this.TagName.CompareTo(other.TagName);
