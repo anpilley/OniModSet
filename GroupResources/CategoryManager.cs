@@ -28,8 +28,13 @@ namespace GroupResources
 {
     public class CategoryManager : KMonoBehaviour
     {
+        /// <summary>
+        /// State tracking class, avoiding excessive visibility changes.
+        /// </summary>
+        private class HeaderState { public GameObject Header; public bool State; }
+
         private GameObject resourcesHeader = null;
-        public Dictionary<Tag, GameObject> materialHeaders;
+        private Dictionary<Tag, HeaderState> materialHeaders;
         public GroupResourceSettings settings = null;
 
         public CategoryManager()
@@ -156,7 +161,7 @@ namespace GroupResources
                 materialHeaders.Clear();
             }
 
-            materialHeaders = new Dictionary<Tag, GameObject>();
+            materialHeaders = new Dictionary<Tag, HeaderState>();
 
             
         }
@@ -209,7 +214,7 @@ namespace GroupResources
             {
                 try
                 {
-                    materialHeaders[clearCategory].SetActive(false);
+                    materialHeaders[clearCategory].State = false;
                 }
                 catch (NullReferenceException)
                 {
@@ -231,13 +236,12 @@ namespace GroupResources
                     // headers might not have been added yet/at all, since they get deferred, or disabled.
                     if (materialHeaders.ContainsKey(itemCategoryTag))
                     {
-                        materialHeaders[itemCategoryTag].transform.SetAsLastSibling();
+                        materialHeaders[itemCategoryTag].Header.transform.SetAsLastSibling();
                     
                         var headerTag = new ResourceHeaderState.AsteroidTagKey(currWorldId, itemCategoryTag.ProperNameStripLink());
-                        var headerButton = materialHeaders[itemCategoryTag].transform.Find("Header").GetComponent<MultiToggle>();
+                        var headerButton = materialHeaders[itemCategoryTag].Header.transform.Find("Header").GetComponent<MultiToggle>();
                         if (GetHeaderState().HeaderState.ContainsKey(headerTag))
                         {
-
                             headerButton.ChangeState(GetHeaderState().HeaderState[headerTag]);
                         }
                         else
@@ -287,8 +291,8 @@ namespace GroupResources
                         // show headers for things we might show (showRowOnThisWorld), and work out if we need to collapse items.
                         try
                         {
-                            materialHeaders[category].SetActive(true);
-                            var headerButton = materialHeaders[category].transform.Find("Header").GetComponent<MultiToggle>();
+                            materialHeaders[category].State = true;
+                            var headerButton = materialHeaders[category].Header.transform.Find("Header").GetComponent<MultiToggle>();
                             if (headerButton.CurrentState == 0)
                             {
                                 categoryCollapsed = true;
@@ -338,6 +342,12 @@ namespace GroupResources
                         Debug.LogError("[GroupResources]: Null Reference hiding row items from world state");
                     }
                 }
+            }
+
+            // based on the State, show/hide appropriate category headers.
+            foreach(HeaderState headerState in materialHeaders.Values)
+            {
+                headerState.Header.gameObject.SetActive(headerState.State);
             }
 
             resourcesPanelGO.clearNewButton.transform.SetAsLastSibling();
@@ -461,7 +471,7 @@ namespace GroupResources
                     };
 
                     // TODO adjust internal bits here
-                    materialHeaders.Add(coCategory, categoryHeader);
+                    materialHeaders.Add(coCategory, new HeaderState() { Header = categoryHeader, State = true });
                 }
 
                 // For some reason, using a reverse patch of SortRows wasn't executing. No idea why, possibly because we patched it already.
