@@ -15,7 +15,7 @@
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
-    <FileVersion>0.9.1.0</FileVersion>
+    <FileVersion>0.9.2.0</FileVersion>
     <UsesPLib>false</UsesPLib>
     <SupportedContent>EXPANSION1_ID</SupportedContent>
     <TargetFrameworkProfile />

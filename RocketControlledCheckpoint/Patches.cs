@@ -45,7 +45,6 @@ namespace RocketControlledCheckpoint
                 if (suitMarker)
                 {
                     go.AddOrGetDef<RocketUsageRestriction.Def>();
-                    go.AddOrGet<LogicOperationalController>();
                 }
                 else
                 {
