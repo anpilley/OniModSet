@@ -1,4 +1,4 @@
-﻿// Copyright © 2022 Andrew Pilley
+﻿// Copyright © 2022-2025 Andrew Pilley
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
 // files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use,
@@ -17,6 +17,7 @@ using HarmonyLib;
 using UnityEngine;
 using System.Collections.Generic;
 using static Components;
+using System.Runtime.CompilerServices;
 
 namespace RocketControlledCheckpoint
 {
@@ -26,7 +27,7 @@ namespace RocketControlledCheckpoint
         {
             public override void OnLoad(Harmony harmony)
             {
-                Utility.DebugLog(" Controllable Suit Checkpoints!");
+                Utility.DebugLog("Controllable Suit Checkpoints!");
                 harmony.PatchAll();
             }
         }
@@ -53,135 +54,114 @@ namespace RocketControlledCheckpoint
             }
         }
 
-        /// <summary>
-        /// Add an automation input port for the suit checkpoint.
-        /// </summary>
-        [HarmonyPatch(typeof(SuitMarkerConfig))]
-        [HarmonyPatch("CreateBuildingDef")]
-        public class SuitMarkerConfig_CreateBuildingDef_Patch
-        {
-            public static void Postfix(ref BuildingDef __result)
-            {
-                __result.LogicInputPorts = LogicOperationalController.CreateSingleInputPortList(new CellOffset(0, 0));
-            }
-        }
-
         #endregion
 
-        #region // request crew side screen
+        #region // summon crew side screen
 
-        /// <summary>
-        /// Reverse patch private method RefreshRequestButtons so i can call it from other patches.
-        /// </summary>
-        [HarmonyPatch]
-        public class RequestCrewSideScreen_RefreshRequestButtons_Patch
+        [HarmonyPatch(typeof(SummonCrewSideScreen))]
+        [HarmonyPatch("ToggleCrewRequestState")]
+        public class SummonCrewSideScreen_ToggleCrewRequestState_Patch
         {
-            [HarmonyReversePatch]
-            [HarmonyPatch(typeof(RequestCrewSideScreen), "RefreshRequestButtons")]
-            public static void RefreshRequestButtons(object instance)
+            public static PassengerRocketModule patchRocketModule = null;
+            public static bool Prefix(SummonCrewSideScreen __instance)
             {
-                Utility.ErrorLog("RefreshRequestButtons stub");
+                if(patchRocketModule == null)
+                {
+                    Utility.DebugLog("Didn't have a ref to the PassengerRocketModule in ToggleCrewRequestState");
+                    return true;
+                }
+                switch (patchRocketModule.PassengersRequested)
+                {
+                    case PassengerRocketModule.RequestCrewState.Request:
+                        patchRocketModule.RequestCrewBoard(PassengerRocketModule.RequestCrewState.Release);
+                        break;
+                    case PassengerRocketModule.RequestCrewState.Release:
+                        patchRocketModule.RequestCrewBoard((PassengerRocketModule.RequestCrewState)3);
+                        break;
+                    case ((PassengerRocketModule.RequestCrewState)3):
+                        patchRocketModule.RequestCrewBoard(PassengerRocketModule.RequestCrewState.Request);
+                        break;
+                    default:
+                        patchRocketModule.RequestCrewBoard(PassengerRocketModule.RequestCrewState.Release);
+                        break;
+                }
+                return false;
             }
         }
 
-        /// <summary>
-        /// Append extra behavior for the OnSpawn, hooking up the onClick behavior.
-        /// </summary>
-        [HarmonyPatch(typeof(RequestCrewSideScreen))]
-        [HarmonyPatch("OnSpawn")]
-        public class RequestCrewSideScreen_OnSpawn_Patch
+        [HarmonyPatch(typeof(SummonCrewSideScreen))]
+        [HarmonyPatch("Refresh")]
+        public class SummonCrewSideScreen_Refresh_Patch
         {
-            public static PassengerRocketModule patchRocketModule = null;
-            public static void Prefix(
-                RequestCrewSideScreen __instance,
-                PassengerRocketModule ___rocketModule,
-                Dictionary<KToggle, PassengerRocketModule.RequestCrewState> ___toggleMap)
+            public static bool Prefix(SummonCrewSideScreen __instance)
             {
-                Utility.DebugLog("Current PassengerRocketModuleState = " + (int)___rocketModule.PassengersRequested);
+                if (SummonCrewSideScreen_ToggleCrewRequestState_Patch.patchRocketModule is null)
+                    return true;
 
-                var limitedButtonGO = __instance.transform.Find("ButtonContainer/Buttons/Limited").gameObject;
-                var limitedButton = limitedButtonGO.GetComponent<KToggle>();
-                limitedButton.onClick += () =>
+                if (SummonCrewSideScreen_ToggleCrewRequestState_Patch.patchRocketModule.PassengersRequested == 
+                    (PassengerRocketModule.RequestCrewState)3)
                 {
-                    if (patchRocketModule == null)
-                    {
-                        Utility.ErrorLog("patchRocketModule is null unexpectedly, ignoring Limit button press!");
-                        return;
-                    }
-                    patchRocketModule.RequestCrewBoard((PassengerRocketModule.RequestCrewState)3);
-                    RequestCrewSideScreen_RefreshRequestButtons_Patch.RefreshRequestButtons(__instance);
-#if DEBUG
-                    Utility.DebugLog("Limit button clicked");
-#endif
-                };
+                    //Utility.DebugLog("Showing the Crew Limited button (state 3).");
+                    __instance.infoLabel.SetText("Crew Limited");
+                    __instance.infoLabelTooltip.SetSimpleTooltip("The rocket module will only allow crew members to enter or exit.");
+                    __instance.buttonLabel.SetText("Limit Crew");
+                    __instance.buttonTooltip.SetSimpleTooltip(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.CANCEL_BUTTON_LABEL);
+                    __instance.image.sprite = Assets.GetSprite((HashedString)"status_item_change_door_control_state");
+                    __instance.image.color = Color.yellow;
+                    return false;
+                }
 
-                ___toggleMap.Add(limitedButton, (PassengerRocketModule.RequestCrewState)3);
-
+                //Utility.DebugLog("Showing some other state.");
+                return true;
             }
         }
 
         /// <summary>
         /// Godawful hack to make sure we can access the passenger module from onClick
         /// </summary>
-        [HarmonyPatch(typeof(RequestCrewSideScreen))]
+        [HarmonyPatch(typeof(SummonCrewSideScreen))]
         [HarmonyPatch("SetTarget")]
-        public class RequestCrewSideScreen_SetTarget_Patch
+        public class SummonCrewSideScreen_SetTarget_Patch
         {
-            public static void Postfix(PassengerRocketModule ___rocketModule)
+            public static void Prefix(GameObject target)
             {
                 // Pass this to the static tracking variable, so we can use it in limitedButton.onClick
-                RequestCrewSideScreen_OnSpawn_Patch.patchRocketModule = ___rocketModule;
-            }
-        }
-        #endregion
-
-        #region // KScreen
-        /// <summary>
-        /// Patch KScreen to get access to OnPrefabInit for RequestCrewSidescreen, add our extra button
-        /// </summary>
-        [HarmonyPatch(typeof(KScreen))]
-        [HarmonyPatch("OnPrefabInit")]
-        public class KScreen_OnPrefabInit_Patch
-        {
-            public static void Postfix(KScreen __instance)
-            {
-                if(__instance is RequestCrewSideScreen rcss)
+                if (target != null)
                 {
-                    Utility.DebugLog("Got RequestCrewSideScreen::OnPrefabInit");
-
-                    // Buttons found using DNI, alt-u, inspecting button to discover RCSS has
-                    // ButtonContainer -> Buttons -> Release|Request.
-                    var allButton = __instance.transform.Find("ButtonContainer/Buttons/Release").gameObject;
-                    var crewButton = __instance.transform.Find("ButtonContainer/Buttons/Request").gameObject;
-                    var buttonsGroup = __instance.transform.Find("ButtonContainer/Buttons").gameObject;
-
-                    if (!allButton || !crewButton)
+                    CraftModuleInterface craftModuleInterface = null;
+                    RocketModuleCluster component = target.GetComponent<RocketModuleCluster>();
+                    if (component != null)
                     {
-                        Utility.ErrorLog("Couldn't find All or Crew button");
+                        //Utility.DebugLog("Using the selected rocket CraftInterface");
+                        craftModuleInterface = component.CraftInterface;
+                    }
+                    else if (target.GetComponent<RocketControlStation>() != null)
+                    {
+                        //Utility.DebugLog("We seem to be inside a rocket, using this world's ModuleInterface");
+                        craftModuleInterface = target.GetMyWorld().GetComponent<Clustercraft>().ModuleInterface;
+                    }
+
+                    if (craftModuleInterface is null)
+                    {
+                        //Utility.DebugLog("Couldn't find CraftModuleInterface");
                         return;
                     }
-                    
-                    // Resize the existing buttons
-                    allButton.rectTransform().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 80f);
-                    crewButton.rectTransform().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 80f);
-                    crewButton.rectTransform().SetInsetAndSizeFromParentEdge(
-                        RectTransform.Edge.Right, 25f, crewButton.rectTransform().sizeDelta.x);
 
-                    // add another in.
-                    var limitedButton = Util.KInstantiate(allButton, buttonsGroup, "Limited");
-                    limitedButton.rectTransform().localScale = new Vector3(1.0f, 1.0f);
-                    var locText = limitedButton.GetComponentInChildren<LocText>();
-                    locText.text = "Limit";
-
-                    limitedButton.rectTransform().SetInsetAndSizeFromParentEdge(
-                        RectTransform.Edge.Left, 25f, limitedButton.rectTransform().sizeDelta.x);
-                    
-                    limitedButton.GetComponent<ToolTip>().toolTip = "Limit entry to Crew Only";
-#if DEBUG
-                    Utility.DebugLog("Added button to RCS prefab");
-#endif
-
+                    //Utility.DebugLog("Updating the sidescreen target to " + craftModuleInterface.GetPassengerModule());
+                    SummonCrewSideScreen_ToggleCrewRequestState_Patch.patchRocketModule = craftModuleInterface.GetPassengerModule();
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(SummonCrewSideScreen))]
+        [HarmonyPatch("ClearTarget")]
+        public class SummonCrewSideScreen_ClearTarget_Patch
+        {
+            public static void Postfix()
+            {
+                //Utility.DebugLog("Clearing the sidescreen target.");
+                SummonCrewSideScreen_ToggleCrewRequestState_Patch.patchRocketModule = null;
+                
             }
         }
         #endregion
@@ -206,7 +186,7 @@ namespace RocketControlledCheckpoint
                 if (__instance.PassengersRequested == (PassengerRocketModule.RequestCrewState)3)
                 {
 #if DEBUG
-                    Utility.DebugLog("Crew state 3 detected." + __instance);
+                    Utility.DebugLog("Crew state 3 detected. " + __instance);
 
 #endif
                     int exteriorCell = __instance.GetComponent<NavTeleporter>().GetCell();

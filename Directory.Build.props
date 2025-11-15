@@ -7,7 +7,7 @@
     <Reference Private="False" />
     <ProjectReference Private="True" />
   </ItemDefinitionGroup>
-  
+
   <ItemGroup>
     <Reference Include="Assembly-CSharp" HintPath="$(GameFolder)/Assembly-CSharp.dll" />
     <Reference Include="Assembly-CSharp-firstpass" HintPath="$(GameFolder)/Assembly-CSharp-firstpass.dll" />
@@ -28,7 +28,7 @@
     <Authors>Andrew Pilley</Authors>
     <Copyright>Copyright ©Andrew Pilley 2022</Copyright>
     <TargetFramework>net471</TargetFramework>
-    <LastWorkingBuild>552078</LastWorkingBuild>
+    <LastWorkingBuild>658361</LastWorkingBuild>
     <DistributeMod>true</DistributeMod>
     <ArchivedVersionPath></ArchivedVersionPath>
     <UsePublicized>false</UsePublicized>

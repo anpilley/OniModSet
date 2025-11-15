@@ -16,11 +16,12 @@
     <PropertyGroup>
       <ModInfoFile>$(IntermediateOutputPath)\mod_info.yaml</ModInfoFile>
       <ModInfoFileContent>
-supportedContent: $(SupportedContent)
+requiredDlcIds: [$(RequiredDlcIds)]
+forbiddenDlcIds: [$(ForbiddenDlcIds)]
 minimumSupportedBuild: $(LastWorkingBuild)
 version: $(FileVersion)
 APIVersion: 2
-      </ModInfoFileContent>
+	  </ModInfoFileContent>
     </PropertyGroup>
     <WriteLinesToFile File="$(ModInfoFile)" Overwrite="true" Lines="$(ModInfoFileContent)"/>
   </Target>
@@ -37,32 +38,10 @@ staticID: Mycronite.Net.$(AssemblyName)
     <WriteLinesToFile File="$(ModDescriptionFile)" Overwrite="true" Lines="$(ModDescriptionFileContent)"/>
   </Target>
 
-  <Target Name="ILRepack" AfterTargets="Build">
-    <PropertyGroup Condition=" '$(AssemblyName)' == 'PLib' ">
-      <Internalize>false</Internalize>
-    </PropertyGroup>
-    <PropertyGroup Condition=" '$(AssemblyName)' != 'PLib' ">
-      <Internalize>true</Internalize>
-    </PropertyGroup>
-    <ItemGroup Condition=" '$(UsesPLib)' != 'false' Or '$(AssemblyName)' == 'PLib' ">
-      <InputAssemblies Include="$(TargetDir)PLib*.dll" />
-    </ItemGroup>
-    <ItemGroup Condition=" '$(UsesPLib)' == 'false' ">
-      <InputAssemblies Include="$(TargetPath)" />
-    </ItemGroup>
-
-    <ILRepack
-        TargetPlatformVersion="v4"
-        OutputType="SameAsPrimaryAssembly"
-        MainAssembly="$(TargetPath)"
-        OutputAssembly="$(TargetPath)"
-        InputAssemblies="@(InputAssemblies)"
-        XmlDocumentation="true"
-        Internalize="$(Internalize)"
-        WilcardInputAssemblies="true"
-        WorkingDirectory="$(GameFolder)" />
-  </Target>
-
+	<PropertyGroup>
+		<ILRepackTargetsFile>$(SolutionDir)ILRepack.targets</ILRepackTargetsFile>
+	</PropertyGroup>
+	
   <Target Name="CopyArtifactsToInstallFolder" AfterTargets="ILRepack" Condition=" '$(DistributeMod)' == 'true' ">
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <RootInstallFolder>..\Release\$(ProjectName)</RootInstallFolder>

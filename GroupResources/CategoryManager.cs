@@ -76,7 +76,7 @@ namespace GroupResources
         /// Add category to the pickupable -> tag cache if it's not already in there.
         /// </summary>
         /// <param name="rowTag">The resource to lookup and add.</param>
-        public void AddCategoryToCache(Tag rowTag)
+        public bool AddCategoryToCache(Tag rowTag)
         {
             if (rowTag == null)
             {
@@ -91,7 +91,7 @@ namespace GroupResources
                     if (resourceTags.Contains(rowTag))
                     {
                         PickupableToCategoryCache.Add(rowTag, materialCategory);
-                        return;
+                        return true;
                     }
                 }
             }
@@ -102,7 +102,7 @@ namespace GroupResources
                     if (resourceTags.Contains(rowTag))
                     {
                         PickupableToCategoryCache.Add(rowTag, calorieCategory);
-                        return;
+                        return true;
                     }
                 }
             }
@@ -114,7 +114,7 @@ namespace GroupResources
                     if (resourceTags.Contains(rowTag))
                     {
                         PickupableToCategoryCache.Add(rowTag, unitCategory);
-                        return;
+                        return true;
                     }
                 }
             }
@@ -125,7 +125,7 @@ namespace GroupResources
                 if (resourceTags.Contains(rowTag))
                 {
                     PickupableToCategoryCache.Add(rowTag, GameTags.Miscellaneous);
-                    return;
+                    return true;
                 }
             }
 
@@ -135,11 +135,13 @@ namespace GroupResources
                 if (resourceTags.Contains(rowTag))
                 {
                     PickupableToCategoryCache.Add(rowTag, GameTags.MiscPickupable);
-                    return;
+                    return true;
                 }
             }
 
-            Debug.LogError("[GroupResources]: Couldn't find a category for Tag: " + rowTag.ProperName());
+            Debug.LogWarning("[GroupResources]: Couldn't find a category for Tag: " + rowTag.ProperName());
+            
+            return false;
         }
 
         /// <summary>
@@ -182,7 +184,10 @@ namespace GroupResources
                 if (!PickupableToCategoryCache.ContainsKey(rowTag))
                 {
                     // Add it if it's not already there.
-                    AddCategoryToCache(rowTag);
+                    if (!AddCategoryToCache(rowTag))
+                    {
+                        Debug.LogWarning("Trying to sort row we can't find a category for?");
+                    }
                 }
             }
 
@@ -380,7 +385,19 @@ namespace GroupResources
             if (!PickupableToCategoryCache.ContainsKey(itemTag))
             {
                 // Add it if it's not already there.
-                AddCategoryToCache(itemTag);
+                if (!AddCategoryToCache(itemTag))
+                {
+                    if (itemTag.Name.Contains("MISSING"))
+                    {
+                        Debug.LogWarning("Trying to prune item tag that doesn't seem to exist anymore?");
+
+                        WorldInventory worldInventory = ClusterManager.Instance.GetWorld(ClusterManager.Instance.activeWorldId).worldInventory;
+                        worldInventory.RemoveTag(itemTag);
+                        rows.Remove(itemTag);
+                        // also prune any empty categories?
+                    }
+                    return;
+                }
             }
 
             var category = PickupableToCategoryCache[itemTag];
