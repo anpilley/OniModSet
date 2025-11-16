@@ -26,9 +26,9 @@
   <PropertyGroup>
     <Product>MycroniteONIMods</Product>
     <Authors>Andrew Pilley</Authors>
-    <Copyright>Copyright ©Andrew Pilley 2022</Copyright>
+    <Copyright>Copyright ©Andrew Pilley 2025</Copyright>
     <TargetFramework>net471</TargetFramework>
-    <LastWorkingBuild>658361</LastWorkingBuild>
+    <LastWorkingBuild>699556</LastWorkingBuild>
     <DistributeMod>true</DistributeMod>
     <ArchivedVersionPath></ArchivedVersionPath>
     <UsePublicized>false</UsePublicized>
