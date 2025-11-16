@@ -93,21 +93,36 @@ namespace RocketControlledCheckpoint
         [HarmonyPatch("Refresh")]
         public class SummonCrewSideScreen_Refresh_Patch
         {
+            private static Color defaultColor = new Color(0.5568628f, 0.5568628f, 0.5568628f, 1f);
             public static bool Prefix(SummonCrewSideScreen __instance)
             {
                 if (SummonCrewSideScreen_ToggleCrewRequestState_Patch.patchRocketModule is null)
                     return true;
 
-                if (SummonCrewSideScreen_ToggleCrewRequestState_Patch.patchRocketModule.PassengersRequested == 
+                var passengerRocketModule = SummonCrewSideScreen_ToggleCrewRequestState_Patch.patchRocketModule;
+                __instance.button.isInteractable = passengerRocketModule.GetCrewCount() > 0;
+
+                if (passengerRocketModule.PassengersRequested == PassengerRocketModule.RequestCrewState.Release)
+                {
+                    __instance.infoLabel.SetText(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.INFO_LABEL_PUBLIC_ACCESS);
+                    __instance.infoLabelTooltip.SetSimpleTooltip(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.INFO_LABEL_TOOLTIP_PUBLIC_ACCESS);
+
+                    __instance.buttonLabel.SetText("Limit to Crew Only");
+                    __instance.buttonTooltip.SetSimpleTooltip("Only duplicants on the crew list will be allowed to enter or exit.");
+                    __instance.image.sprite = Assets.GetSprite((HashedString)"status_item_change_door_control_state");
+                    __instance.image.color = defaultColor;
+                    return false;
+                }
+                else if (passengerRocketModule.PassengersRequested == 
                     (PassengerRocketModule.RequestCrewState)3)
                 {
                     //Utility.DebugLog("Showing the Crew Limited button (state 3).");
                     __instance.infoLabel.SetText("Crew Limited");
                     __instance.infoLabelTooltip.SetSimpleTooltip("The rocket module will only allow crew members to enter or exit.");
-                    __instance.buttonLabel.SetText("Limit Crew");
-                    __instance.buttonTooltip.SetSimpleTooltip(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.CANCEL_BUTTON_LABEL);
+                    __instance.buttonLabel.SetText(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.SUMMON_CREW_BUTTON_LABEL);
+                    __instance.buttonTooltip.SetSimpleTooltip(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.SUMMON_CREW_BUTTON_TOOLTIP);
                     __instance.image.sprite = Assets.GetSprite((HashedString)"status_item_change_door_control_state");
-                    __instance.image.color = Color.yellow;
+                    __instance.image.color = Color.blue;
                     return false;
                 }
 
