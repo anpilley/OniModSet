@@ -117,7 +117,7 @@ namespace RocketControlledCheckpoint
                     (PassengerRocketModule.RequestCrewState)3)
                 {
                     //Utility.DebugLog("Showing the Crew Limited button (state 3).");
-                    __instance.infoLabel.SetText("Crew Limited");
+                    __instance.infoLabel.SetText("Access: Crew Limited");
                     __instance.infoLabelTooltip.SetSimpleTooltip("The rocket module will only allow crew members to enter or exit.");
                     __instance.buttonLabel.SetText(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.SUMMON_CREW_BUTTON_LABEL);
                     __instance.buttonTooltip.SetSimpleTooltip(STRINGS.UI.UISIDESCREENS.SUMMON_CREW_SIDESCREEN.SUMMON_CREW_BUTTON_TOOLTIP);
