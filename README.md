@@ -1,3 +1,10 @@
+# ARCHIVED: 
+
+## I've moved this mod over to codeberg, because fuck copilot. 
+## You can find it, and file issues, over here: https://codeberg.org/anpilley/OniMods
+
+Future releases will come out of that source tree.
+
 # OniModSet
 
 A set of In-progress/personal mods for Oxygen Not Included,
